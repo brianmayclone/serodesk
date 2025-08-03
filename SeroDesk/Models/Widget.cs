@@ -55,11 +55,12 @@ namespace SeroDesk.Models
         }
     }
     
-    public class ClockWidget : Widget
+    public class ClockWidget : Widget, IDisposable
     {
         private string _currentTime = DateTime.Now.ToString("HH:mm");
         private string _currentDate = DateTime.Now.ToString("dddd, MMMM dd");
         private Timer? _timer;
+        private bool _disposed = false;
         
         public string CurrentTime 
         { 
@@ -81,16 +82,46 @@ namespace SeroDesk.Models
         
         public override void Initialize()
         {
-            _timer = new Timer(UpdateTime, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+            if (!_disposed)
+            {
+                _timer = new Timer(UpdateTime, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+            }
         }
         
         private void UpdateTime(object? state)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            if (_disposed) return;
+            
+            try
             {
-                CurrentTime = DateTime.Now.ToString("HH:mm");
-                CurrentDate = DateTime.Now.ToString("dddd, MMMM dd");
-            });
+                // Check if Application.Current is available
+                if (Application.Current != null)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (!_disposed)
+                        {
+                            CurrentTime = DateTime.Now.ToString("HH:mm");
+                            CurrentDate = DateTime.Now.ToString("dddd, MMMM dd");
+                        }
+                    });
+                }
+                else
+                {
+                    // Fallback: Update directly if no dispatcher available
+                    // This might happen during application shutdown
+                    if (!_disposed)
+                    {
+                        CurrentTime = DateTime.Now.ToString("HH:mm");
+                        CurrentDate = DateTime.Now.ToString("dddd, MMMM dd");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception but don't crash the application
+                System.Diagnostics.Debug.WriteLine($"Error updating clock time: {ex.Message}");
+            }
         }
         
         public override void UpdateData()
@@ -102,6 +133,27 @@ namespace SeroDesk.Models
         public override UserControl CreateView()
         {
             return new Views.Widgets.ClockWidgetView { DataContext = this };
+        }
+        
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
+            {
+                _timer?.Dispose();
+                _timer = null;
+                _disposed = true;
+            }
+        }
+        
+        ~ClockWidget()
+        {
+            Dispose(false);
         }
     }
     

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Text;
+using System.Collections.Generic;
 using SeroDesk.Platform;
 using SeroDesk.ViewModels;
 
@@ -11,6 +12,8 @@ namespace SeroDesk.Views
     public partial class SeroDock : UserControl
     {
         private DockViewModel? _viewModel;
+        private List<IntPtr> _minimizedWindows = new List<IntPtr>();
+        private bool _isDesktopMode = false;
         
         public SeroDock()
         {
@@ -252,12 +255,22 @@ namespace SeroDesk.Views
         {
             try
             {
-                // Show Desktop functionality - minimize all windows
-                MinimizeAllWindows();
+                if (_isDesktopMode)
+                {
+                    // Restore previously minimized windows
+                    RestoreMinimizedWindows();
+                    _isDesktopMode = false;
+                }
+                else
+                {
+                    // Show Desktop functionality - minimize all windows
+                    MinimizeAllWindows();
+                    _isDesktopMode = true;
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to show desktop: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to toggle desktop mode: {ex.Message}");
             }
             
             PlayBounceAnimation(sender as Button);
@@ -265,6 +278,9 @@ namespace SeroDesk.Views
         
         private void MinimizeAllWindows()
         {
+            // Clear previous list
+            _minimizedWindows.Clear();
+            
             // Enumerate all windows and minimize visible ones
             NativeMethods.EnumWindows((hWnd, lParam) =>
             {
@@ -289,6 +305,8 @@ namespace SeroDesk.Views
                             var windowLong = NativeMethods.GetWindowLong(hWnd, NativeMethods.GWL_STYLE);
                             if ((windowLong & NativeMethods.WS_MINIMIZE) == 0)
                             {
+                                // Track this window before minimizing
+                                _minimizedWindows.Add(hWnd);
                                 NativeMethods.ShowWindow(hWnd, NativeMethods.SW_MINIMIZE);
                             }
                         }
@@ -296,6 +314,34 @@ namespace SeroDesk.Views
                 }
                 return true; // Continue enumeration
             }, IntPtr.Zero);
+        }
+        
+        private void RestoreMinimizedWindows()
+        {
+            // Restore all previously minimized windows
+            foreach (var hWnd in _minimizedWindows)
+            {
+                try
+                {
+                    // Check if the window still exists and is minimized
+                    if (NativeMethods.IsWindowVisible(hWnd))
+                    {
+                        var windowLong = NativeMethods.GetWindowLong(hWnd, NativeMethods.GWL_STYLE);
+                        if ((windowLong & NativeMethods.WS_MINIMIZE) != 0)
+                        {
+                            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+                            NativeMethods.SetForegroundWindow(hWnd);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to restore window {hWnd}: {ex.Message}");
+                }
+            }
+            
+            // Clear the list after restoration
+            _minimizedWindows.Clear();
         }
         
         private void PlayBounceAnimation(Button? button)

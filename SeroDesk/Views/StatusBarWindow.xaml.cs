@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Text;
+using System.Collections.Generic;
 using SeroDesk.Platform;
 
 namespace SeroDesk.Views
@@ -18,6 +19,19 @@ namespace SeroDesk.Views
         private bool _isOnDesktop = true; // Track if we're currently on desktop/launchpad
         private const int STATUS_BAR_HEIGHT = 32;
         private const int MOUSE_ACTIVATION_AREA = 5; // Pixels from top of screen
+        
+        // Window resizing tracking
+        private Dictionary<IntPtr, WindowInfo> _resizedWindows = new Dictionary<IntPtr, WindowInfo>();
+        
+        // Structure to store original window information
+        private struct WindowInfo
+        {
+            public int X, Y, Width, Height;
+            public WindowInfo(int x, int y, int width, int height)
+            {
+                X = x; Y = y; Width = width; Height = height;
+            }
+        }
         
         public StatusBarWindow()
         {
@@ -197,7 +211,12 @@ namespace SeroDesk.Views
                 Duration = TimeSpan.FromMilliseconds(300)
             };
             
-            slideDown.Completed += (s, e) => _isAnimating = false;
+            slideDown.Completed += (s, e) => 
+            {
+                _isAnimating = false;
+                // Resize overlapping windows when StatusBar becomes visible
+                ResizeOverlappingWindows();
+            };
             
             var translateTransform = new System.Windows.Media.TranslateTransform();
             this.RenderTransform = translateTransform;
@@ -233,6 +252,8 @@ namespace SeroDesk.Views
             {
                 _isAnimating = false;
                 this.Visibility = Visibility.Hidden;
+                // Restore windows to original sizes when StatusBar hides
+                RestoreResizedWindows();
             };
             
             var translateTransform = this.RenderTransform as System.Windows.Media.TranslateTransform;
@@ -302,6 +323,118 @@ namespace SeroDesk.Views
                     System.Diagnostics.Debug.WriteLine($"Failed to set status bar background: {ex.Message}");
                 }
             });
+        }
+        
+        private void ResizeOverlappingWindows()
+        {
+            // Clear previous tracking
+            _resizedWindows.Clear();
+            
+            // Get screen dimensions
+            var screenHeight = SystemParameters.PrimaryScreenHeight;
+            var screenWidth = SystemParameters.PrimaryScreenWidth;
+            
+            // Enumerate all windows
+            NativeMethods.EnumWindows((hWnd, lParam) =>
+            {
+                if (NativeMethods.IsWindowVisible(hWnd) && !IsFullscreenWindow(hWnd))
+                {
+                    // Get window title to filter out system windows
+                    var length = NativeMethods.GetWindowTextLength(hWnd);
+                    if (length > 0)
+                    {
+                        var title = new StringBuilder(length + 1);
+                        NativeMethods.GetWindowText(hWnd, title, title.Capacity);
+                        
+                        var windowTitle = title.ToString();
+                        if (!string.IsNullOrEmpty(windowTitle) && 
+                            !windowTitle.Contains("SeroDesk") &&
+                            !windowTitle.Contains("Task View") &&
+                            !windowTitle.Contains("Start") &&
+                            windowTitle != "Program Manager")
+                        {
+                            // Get current window position and size
+                            if (NativeMethods.GetWindowRect(hWnd, out var rect))
+                            {
+                                // Check if window overlaps with status bar area (top 32 pixels)
+                                if (rect.Top < STATUS_BAR_HEIGHT && rect.Bottom > 0)
+                                {
+                                    // Store original position/size
+                                    _resizedWindows[hWnd] = new WindowInfo(rect.Left, rect.Top, 
+                                        rect.Right - rect.Left, rect.Bottom - rect.Top);
+                                    
+                                    // Calculate new position (move down by status bar height)
+                                    var newY = Math.Max(STATUS_BAR_HEIGHT, rect.Top);
+                                    var newHeight = (rect.Bottom - rect.Top) - (newY - rect.Top);
+                                    
+                                    // Only resize if the window would still have reasonable height
+                                    if (newHeight > 100)
+                                    {
+                                        NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
+                                            rect.Left, newY, rect.Right - rect.Left, newHeight,
+                                            NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return true;
+            }, IntPtr.Zero);
+        }
+        
+        private void RestoreResizedWindows()
+        {
+            // Restore all windows to their original positions/sizes
+            foreach (var kvp in _resizedWindows)
+            {
+                var hWnd = kvp.Key;
+                var originalInfo = kvp.Value;
+                
+                try
+                {
+                    // Check if window still exists
+                    if (NativeMethods.IsWindowVisible(hWnd))
+                    {
+                        NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
+                            originalInfo.X, originalInfo.Y, originalInfo.Width, originalInfo.Height,
+                            NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to restore window {hWnd}: {ex.Message}");
+                }
+            }
+            
+            _resizedWindows.Clear();
+        }
+        
+        private bool IsFullscreenWindow(IntPtr hWnd)
+        {
+            try
+            {
+                // Get window rectangle
+                if (!NativeMethods.GetWindowRect(hWnd, out var rect))
+                    return false;
+                
+                // Get screen dimensions
+                var screenWidth = (int)SystemParameters.PrimaryScreenWidth;
+                var screenHeight = (int)SystemParameters.PrimaryScreenHeight;
+                
+                // Check if window covers entire screen
+                var windowWidth = rect.Right - rect.Left;
+                var windowHeight = rect.Bottom - rect.Top;
+                
+                // Consider a window fullscreen if it covers the entire screen (with small tolerance)
+                return (rect.Left <= 0 && rect.Top <= 0 && 
+                       windowWidth >= screenWidth - 10 && 
+                       windowHeight >= screenHeight - 10);
+            }
+            catch
+            {
+                return false;
+            }
         }
         
         // Win32 API for getting cursor position

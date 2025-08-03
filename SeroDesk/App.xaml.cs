@@ -34,6 +34,11 @@ namespace SeroDesk
         private static DispatcherTimer? _taskbarHideTimer;
         
         /// <summary>
+        /// Global keyboard hook for Windows key functionality
+        /// </summary>
+        private static GlobalKeyboardHook? _globalKeyboardHook;
+        
+        /// <summary>
         /// Overrides the application startup event to initialize SeroDesk as a shell replacement.
         /// This method implements critical startup logic including single-instance enforcement,
         /// exception handling setup, and service initialization for the shell environment.
