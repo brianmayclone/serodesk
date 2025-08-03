@@ -22,6 +22,7 @@ namespace SeroDesk.Views
             InitializeComponent();
             
             Loaded += DockWindow_Loaded;
+            SizeChanged += DockWindow_SizeChanged;
             
             // Initialize timers
             _mouseTrackingTimer = new DispatcherTimer
@@ -35,6 +36,15 @@ namespace SeroDesk.Views
                 Interval = TimeSpan.FromSeconds(3) // Hide after 3 seconds of no mouse activity
             };
             _hideTimer.Tick += HideTimer_Tick;
+        }
+
+        private void DockWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // Recenter the dock when its size changes
+            if (IsLoaded)
+            {
+                CenterDockHorizontally();
+            }
         }
         
         private void DockWindow_Loaded(object sender, RoutedEventArgs e)
@@ -52,18 +62,26 @@ namespace SeroDesk.Views
         
         private void PositionDockAtBottom()
         {
-            var screenWidth = SystemParameters.PrimaryScreenWidth;
             var screenHeight = SystemParameters.PrimaryScreenHeight;
             
-            // Position at bottom center
-            this.Width = 500; // Initial width, will adjust based on content
+            // Position at bottom center - don't set width, let SizeToContent handle it
             this.Height = DOCK_HEIGHT;
-            this.Left = (screenWidth - this.Width) / 2;
             this.Top = screenHeight - DOCK_HEIGHT;
+            
+            // Center horizontally after the window has determined its actual size
+            this.Dispatcher.BeginInvoke(new Action(() => CenterDockHorizontally()), DispatcherPriority.Loaded);
+        }
+        
+        private void CenterDockHorizontally()
+        {
+            var screenWidth = SystemParameters.PrimaryScreenWidth;
+            
+            // Center the dock horizontally based on its actual width
+            this.Left = (screenWidth - this.ActualWidth) / 2;
             
             // Ensure window stays within screen bounds
             if (this.Left < 0) this.Left = 0;
-            if (this.Left + this.Width > screenWidth) this.Left = screenWidth - this.Width;
+            if (this.Left + this.ActualWidth > screenWidth) this.Left = screenWidth - this.ActualWidth;
         }
         
         private void MouseTrackingTimer_Tick(object? sender, EventArgs e)
@@ -72,7 +90,7 @@ namespace SeroDesk.Views
             
             var mousePosition = GetCursorPosition();
             var screenHeight = SystemParameters.PrimaryScreenHeight;
-            var dockArea = new Rect(this.Left - 50, screenHeight - 100, this.Width + 100, 100);
+            var dockArea = new Rect(this.Left - 50, screenHeight - 100, this.ActualWidth + 100, 100);
             
             if (dockArea.Contains(mousePosition))
             {
@@ -106,7 +124,7 @@ namespace SeroDesk.Views
         private bool IsMouseOverDock()
         {
             var mousePosition = GetCursorPosition();
-            var dockBounds = new Rect(this.Left, this.Top, this.Width, this.Height);
+            var dockBounds = new Rect(this.Left, this.Top, this.ActualWidth, this.ActualHeight);
             return dockBounds.Contains(mousePosition);
         }
         

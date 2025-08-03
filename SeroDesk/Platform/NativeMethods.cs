@@ -47,6 +47,31 @@ namespace SeroDesk.Platform
         [DllImport("user32.dll", SetLastError = true)]
         public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
         
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+        
+        #endregion
+        
+        #region Taskbar Management
+        
+        [DllImport("shell32.dll")]
+        public static extern int SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
+        
+        public const uint ABM_SETSTATE = 0x0000000A;
+        public const uint ABS_AUTOHIDE = 0x0000001;
+        public const uint ABS_ALWAYSONTOP = 0x0000002;
+        
+        [StructLayout(LayoutKind.Sequential)]
+        public struct APPBARDATA
+        {
+            public uint cbSize;
+            public IntPtr hWnd;
+            public uint uCallbackMessage;
+            public uint uEdge;
+            public RECT rc;
+            public int lParam;
+        }
+        
         #endregion
         
         #region Shell Integration
