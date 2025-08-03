@@ -1,95 +1,95 @@
-# 🌟 SeroDesk - Touch-optimierte Windows 11 Shell Extension
+# 🌟 SeroDesk - Touch-Optimized Windows 11 Shell Extension
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/download)
 [![Windows](https://img.shields.io/badge/Windows-11-blue.svg)](https://www.microsoft.com/windows)
 [![WPF](https://img.shields.io/badge/WPF-Framework-purple.svg)](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-SeroDesk ist eine innovative, touch-optimierte Shell Extension für Windows 11, die eine iOS-inspirierte Benutzeroberfläche direkt auf Ihrem Desktop bringt. Mit modernen Gesten, einem anpassbaren Dock und intelligenten Widgets transformiert SeroDesk Ihr Windows-Erlebnis in eine intuitive, mobile-ähnliche Oberfläche.
+SeroDesk is an innovative, touch-optimized shell extension for Windows 11 that brings an iOS-inspired user interface directly to your desktop. With modern gestures, a customizable dock, and intelligent widgets, SeroDesk transforms your Windows experience into an intuitive, mobile-like interface.
 
-![SeroDesk Banner](https://via.placeholder.com/800x300/007ACC/FFFFFF?text=SeroDesk+-+Touch-optimierte+Windows+Shell)
+![SeroDesk Banner](https://via.placeholder.com/800x300/007ACC/FFFFFF?text=SeroDesk+-+Touch-Optimized+Windows+Shell)
 
 ## 🚀 Features
 
-### 📱 iOS-inspirierte Benutzeroberfläche
-- **Touch-Gesten**: Native Unterstützung für Wisch-, Pinch- und Tap-Gesten
-- **Launchpad**: Vollbildschirm App-Übersicht mit Ordner-Unterstützung
-- **Dock**: Anpassbare Dock-Leiste mit laufenden Apps und Favoriten
-- **Notification Center**: Zentrale Benachrichtigungsverwaltung (links)
-- **Control Center**: Schnellzugriff auf Systemfunktionen (rechts)
+### 📱 iOS-Inspired User Interface
+- **Touch Gestures**: Native support for swipe, pinch, and tap gestures
+- **Launchpad**: Full-screen app overview with folder support
+- **Dock**: Customizable dock bar with running apps and favorites
+- **Notification Center**: Central notification management (left side)
+- **Control Center**: Quick access to system functions (right side)
 
-### 🎛️ Intelligente Widgets
-- **Wetter-Widget**: Live-Wetterinformationen
-- **Uhr-Widget**: Elegante Zeit- und Datumsanzeige
-- **Anpassbare Widgets**: Verschiebbar, skalierbar und sperrbar
-- **Widget-Manager**: Einfaches Hinzufügen und Entfernen von Widgets
+### 🎛️ Intelligent Widgets
+- **Weather Widget**: Live weather information
+- **Clock Widget**: Elegant time and date display
+- **Customizable Widgets**: Movable, scalable, and lockable
+- **Widget Manager**: Easy adding and removing of widgets
 
-### 🪟 Erweiterte Fensterverwaltung
-- **Shell-Ersatz**: Vollständige Explorer-Integration
-- **Multi-Monitor-Support**: Optimiert für mehrere Bildschirme
-- **Transparenz-Effekte**: Windows 11 Acryl-Design
-- **Always-on-Top**: Intelligente Z-Order-Verwaltung
+### 🪟 Advanced Window Management
+- **Shell Replacement**: Complete Explorer integration
+- **Multi-Monitor Support**: Optimized for multiple screens
+- **Transparency Effects**: Windows 11 acrylic design
+- **Always-on-Top**: Intelligent Z-order management
 
-### 🎨 Moderne Benutzeroberfläche
-- **Fluent Design**: Windows 11 Design-Sprache
-- **Blur-Effekte**: Hintergrund-Unschärfe für bessere Lesbarkeit
-- **Animationen**: Flüssige Übergänge und Reaktionen
-- **Dark/Light Theme**: Automatische Theme-Erkennung
+### 🎨 Modern User Interface
+- **Fluent Design**: Windows 11 design language
+- **Blur Effects**: Background blur for better readability
+- **Animations**: Smooth transitions and responses
+- **Dark/Light Theme**: Automatic theme detection
 
-## 🏗️ Technische Architektur
+## 🏗️ Technical Architecture
 
-### Kern-Technologien
-- **.NET 8.0**: Moderne C# Entwicklung mit neuesten Features
-- **WPF (Windows Presentation Foundation)**: Native Windows UI-Framework
-- **MVVM Pattern**: Saubere Trennung von UI und Geschäftslogik
-- **Win32 API Integration**: Tiefe Windows-Systemintegration
+### Core Technologies
+- **.NET 8.0**: Modern C# development with latest features
+- **WPF (Windows Presentation Foundation)**: Native Windows UI framework
+- **MVVM Pattern**: Clean separation of UI and business logic
+- **Win32 API Integration**: Deep Windows system integration
 
-### Architektur-Komponenten
+### Architecture Components
 
 ```
 SeroDesk/
-├── 📁 Core/                    # Basis-Funktionalitäten
-│   ├── Converters.cs          # XAML Value Converter
-│   ├── DragDropAdorner.cs     # Drag & Drop Visualisierung
-│   └── Extensions.cs          # Extension Methods
-├── 📁 Models/                  # Datenmodelle
-│   ├── AppGroup.cs            # App-Gruppierung
-│   ├── AppIcon.cs             # App-Icon Verwaltung
-│   ├── NotificationItem.cs    # Benachrichtigungen
-│   └── Widget.cs              # Widget-Basisklasse
-├── 📁 Platform/               # Windows-Integration
-│   ├── WindowsIntegration.cs  # Win32 API Wrapper
-│   ├── ExplorerManager.cs     # Explorer Ersatz
-│   └── GestureRecognizer.cs   # Touch-Gesten
-├── 📁 Services/               # Business Logic
-│   ├── WidgetManager.cs       # Widget-Verwaltung
-│   ├── WindowManager.cs       # Fenster-Management
-│   ├── NotificationService.cs # Benachrichtigungen
-│   └── SettingsManager.cs     # Einstellungen
+├── 📁 Core/                    # Base functionalities
+│   ├── Converters.cs          # XAML Value Converters
+│   ├── DragDropAdorner.cs     # Drag & Drop visualization
+│   └── Extensions.cs          # Extension methods
+├── 📁 Models/                  # Data models
+│   ├── AppGroup.cs            # App grouping
+│   ├── AppIcon.cs             # App icon management
+│   ├── NotificationItem.cs    # Notifications
+│   └── Widget.cs              # Widget base class
+├── 📁 Platform/               # Windows integration
+│   ├── WindowsIntegration.cs  # Win32 API wrapper
+│   ├── ExplorerManager.cs     # Explorer replacement
+│   └── GestureRecognizer.cs   # Touch gestures
+├── 📁 Services/               # Business logic
+│   ├── WidgetManager.cs       # Widget management
+│   ├── WindowManager.cs       # Window management
+│   ├── NotificationService.cs # Notifications
+│   └── SettingsManager.cs     # Settings
 ├── 📁 ViewModels/            # MVVM ViewModels
-│   ├── MainViewModel.cs       # Haupt-ViewModel
-│   ├── LaunchpadViewModel.cs  # Launchpad-Logic
+│   ├── MainViewModel.cs       # Main ViewModel
+│   ├── LaunchpadViewModel.cs  # Launchpad logic
 │   └── NotificationCenterViewModel.cs
-├── 📁 Views/                 # UI-Komponenten
-│   ├── MainWindow.xaml        # Haupt-Fenster
-│   ├── SeroLaunchpad.xaml     # App-Übersicht
-│   ├── SeroDock.xaml          # Dock-Leiste
+├── 📁 Views/                 # UI components
+│   ├── MainWindow.xaml        # Main window
+│   ├── SeroLaunchpad.xaml     # App overview
+│   ├── SeroDock.xaml          # Dock bar
 │   ├── SeroNotificationCenter.xaml
 │   ├── SeroControlCenter.xaml
-│   └── Widgets/               # Widget-Views
-└── 📁 Styles/                # XAML Styles & Templates
+│   └── Widgets/               # Widget views
+└── 📁 Styles/                # XAML styles & templates
 ```
 
-## 🔧 Technische Details
+## 🔧 Technical Details
 
-### Shell-Integration
-SeroDesk ersetzt die Windows Explorer Shell durch:
-- **Registry-Manipulation**: Registrierung als alternative Shell
-- **Process-Management**: Automatisches Beenden des Explorers
-- **Window-Hierarchy**: Positionierung als Desktop-Child-Window
+### Shell Integration
+SeroDesk replaces the Windows Explorer shell through:
+- **Registry Manipulation**: Registration as alternative shell
+- **Process Management**: Automatic termination of Explorer
+- **Window Hierarchy**: Positioning as desktop child window
 
 ```csharp
-// Shell-Registrierung
+// Shell registration
 public static void RegisterAsShell(IntPtr hwnd)
 {
     SetShellWindow(hwnd);
@@ -97,11 +97,11 @@ public static void RegisterAsShell(IntPtr hwnd)
 }
 ```
 
-### Touch-Gesten-Erkennung
-Implementiert native Windows Touch-Events:
-- **Manipulation Events**: WPF Touch-Framework
-- **Gesture Recognition**: Custom Swipe/Pinch-Algorithmen
-- **Multi-Touch Support**: Gleichzeitige Gesten-Verarbeitung
+### Touch Gesture Recognition
+Implements native Windows touch events:
+- **Manipulation Events**: WPF touch framework
+- **Gesture Recognition**: Custom swipe/pinch algorithms
+- **Multi-Touch Support**: Simultaneous gesture processing
 
 ```csharp
 private void OnSwipeDetected(SwipeDirection direction, Point startPoint)
@@ -118,12 +118,12 @@ private void OnSwipeDetected(SwipeDirection direction, Point startPoint)
 }
 ```
 
-### Widget-System
-Modulares Widget-Framework:
-- **Abstract Base Class**: `Widget` mit Standard-Funktionalitäten
-- **Dynamic Loading**: Laufzeit-Widget-Erstellung
-- **Persistence**: JSON-basierte Konfigurationsspeicherung
-- **View Creation**: Automatische UI-Generierung
+### Widget System
+Modular widget framework:
+- **Abstract Base Class**: `Widget` with standard functionalities
+- **Dynamic Loading**: Runtime widget creation
+- **Persistence**: JSON-based configuration storage
+- **View Creation**: Automatic UI generation
 
 ```csharp
 public abstract class Widget : INotifyPropertyChanged
@@ -134,46 +134,46 @@ public abstract class Widget : INotifyPropertyChanged
 }
 ```
 
-### Window-Management
-Erweiterte Fensterverwaltung mit:
-- **Z-Order Control**: Präzise Fenster-Schichtung
-- **DPI Awareness**: High-DPI Display-Unterstützung
-- **Blur Effects**: DWM-Integration für Transparenz
-- **Multi-Monitor**: Vollständige Multi-Display-Unterstützung
+### Window Management
+Advanced window management with:
+- **Z-Order Control**: Precise window layering
+- **DPI Awareness**: High-DPI display support
+- **Blur Effects**: DWM integration for transparency
+- **Multi-Monitor**: Complete multi-display support
 
 ## 🛠️ Installation & Setup
 
-### Systemanforderungen
-- **Betriebssystem**: Windows 11 (21H2 oder neuer)
+### System Requirements
+- **Operating System**: Windows 11 (21H2 or newer)
 - **Framework**: .NET 8.0 Runtime
-- **Hardware**: Touch-Display empfohlen
-- **Berechtigungen**: Administrator-Rechte für Shell-Ersatz
+- **Hardware**: Touch display recommended
+- **Permissions**: Administrator rights for shell replacement
 
-### Build-Anweisungen
+### Build Instructions
 
-1. **Repository klonen**:
+1. **Clone repository**:
 ```bash
 git clone https://github.com/brianmayclone/serodesk.git
 cd serodesk
 ```
 
-2. **Dependencies installieren**:
+2. **Install dependencies**:
 ```bash
 dotnet restore SeroDesk/SeroDesk.csproj
 ```
 
-3. **Projekt kompilieren**:
+3. **Compile project**:
 ```bash
 dotnet build SeroDesk/SeroDesk.csproj -c Release
 ```
 
-4. **Als Administrator ausführen**:
+4. **Run as administrator**:
 ```bash
-# Wichtig: Als Administrator für Shell-Ersatz
+# Important: Run as administrator for shell replacement
 .\SeroDesk\bin\Release\net8.0-windows\SeroDesk.exe
 ```
 
-### Entwicklung
+### Development
 
 **Visual Studio Setup**:
 - Visual Studio 2022 (17.5+)
@@ -185,41 +185,41 @@ dotnet build SeroDesk/SeroDesk.csproj -c Release
 dotnet run --project SeroDesk/SeroDesk.csproj
 ```
 
-## 🎮 Bedienung
+## 🎮 Usage
 
-### Touch-Gesten
-| Geste | Aktion |
-|-------|--------|
-| **Vom unteren Rand nach oben wischen** | Launchpad öffnen |
-| **Vom oberen Rand nach unten wischen (links)** | Notification Center |
-| **Vom oberen Rand nach unten wischen (rechts)** | Control Center |
-| **Nach unten wischen (im Launchpad)** | Launchpad schließen |
-| **Pinch-to-Zoom** | Widget-Größe ändern |
+### Touch Gestures
+| Gesture | Action |
+|---------|--------|
+| **Swipe up from bottom edge** | Open Launchpad |
+| **Swipe down from top edge (left)** | Notification Center |
+| **Swipe down from top edge (right)** | Control Center |
+| **Swipe down (in Launchpad)** | Close Launchpad |
+| **Pinch-to-Zoom** | Resize widgets |
 
-### Tastenkombinationen
+### Keyboard Shortcuts
 - **Alt + Tab**: Window Switcher
-- **Windows + D**: Desktop anzeigen
-- **Escape**: Aktuelle Overlay schließen
-- **Alt + Mauszeiger**: Widget-Bearbeitungsmodus
+- **Windows + D**: Show desktop
+- **Escape**: Close current overlay
+- **Alt + Mouse hover**: Widget edit mode
 
-### Widget-Verwaltung
-- **Alt + Hover**: Widget-Handles anzeigen
-- **Drag & Drop**: Widget verschieben
-- **Delete-Taste**: Widget entfernen
-- **Rechtsklick**: Widget-Kontextmenü
+### Widget Management
+- **Alt + Hover**: Show widget handles
+- **Drag & Drop**: Move widgets
+- **Delete key**: Remove widget
+- **Right-click**: Widget context menu
 
-## 🔧 Konfiguration
+## 🔧 Configuration
 
-### Einstellungen-Datei
-Konfiguration wird gespeichert unter:
+### Settings File
+Configuration is stored under:
 ```
 %LocalAppData%\SeroDesk\
-├── settings.json      # Allgemeine Einstellungen
-├── widgets.json       # Widget-Konfiguration
-└── layout.json        # Fenster-Layout
+├── settings.json      # General settings
+├── widgets.json       # Widget configuration
+└── layout.json        # Window layout
 ```
 
-### Widget-Konfiguration
+### Widget Configuration
 ```json
 {
   "widgets": [
@@ -234,84 +234,84 @@ Konfiguration wird gespeichert unter:
 }
 ```
 
-## 🏗️ Architektur-Highlights
+## 🏗️ Architecture Highlights
 
 ### MVVM Implementation
-- **ViewModels**: Geschäftslogik-Trennung
-- **Commands**: UI-Action-Binding
-- **Data Binding**: Reaktive UI-Updates
-- **Services**: Singleton-basierte Services
+- **ViewModels**: Business logic separation
+- **Commands**: UI action binding
+- **Data Binding**: Reactive UI updates
+- **Services**: Singleton-based services
 
 ### Platform Integration
-- **Win32 Interop**: Native Windows-APIs
-- **DWM Composition**: Hardware-beschleunigte Effekte
-- **Shell Integration**: Explorer-Ersatz-Mechanismus
-- **Registry Management**: Systemkonfiguration
+- **Win32 Interop**: Native Windows APIs
+- **DWM Composition**: Hardware-accelerated effects
+- **Shell Integration**: Explorer replacement mechanism
+- **Registry Management**: System configuration
 
-### Performance Optimierungen
-- **Virtualization**: Lazy-Loading für große Listen
-- **Caching**: Intelligent Icon-Caching
-- **Background Processing**: Async/Await-Pattern
-- **Memory Management**: Disposable-Pattern
+### Performance Optimizations
+- **Virtualization**: Lazy-loading for large lists
+- **Caching**: Intelligent icon caching
+- **Background Processing**: Async/Await pattern
+- **Memory Management**: Disposable pattern
 
-## 🤝 Entwicklung & Beitrag
+## 🤝 Development & Contribution
 
-### Code-Struktur
-Das Projekt folgt modernen C#/.NET Entwicklungspraktiken:
-- **Clean Architecture**: Klare Schichtentrennung
-- **SOLID Principles**: Objektorientierte Designprinzipien
-- **Async/Await**: Reaktive Programmierung
-- **Dependency Injection**: Service-basierte Architektur
+### Code Structure
+The project follows modern C#/.NET development practices:
+- **Clean Architecture**: Clear layer separation
+- **SOLID Principles**: Object-oriented design principles
+- **Async/Await**: Reactive programming
+- **Dependency Injection**: Service-based architecture
 
-### Entwicklung beitragen
-1. Fork des Repositories
-2. Feature-Branch erstellen
-3. Änderungen implementieren
-4. Pull Request erstellen
+### Contributing
+1. Fork the repository
+2. Create feature branch
+3. Implement changes
+4. Create pull request
 
 ### Coding Standards
-- **C# 12**: Moderne Sprachfeatures
-- **Nullable Reference Types**: Null-Safety
-- **Code Analysis**: Static Code Analysis
-- **XML Documentation**: Vollständige API-Dokumentation
+- **C# 12**: Modern language features
+- **Nullable Reference Types**: Null safety
+- **Code Analysis**: Static code analysis
+- **XML Documentation**: Complete API documentation
 
 ## 📋 Roadmap
 
-### Version 1.1 (Geplant)
-- [ ] Anpassbare Themes
-- [ ] Mehr Widget-Typen
-- [ ] Verbesserte Touch-Gesten
-- [ ] Multi-Monitor-Dock
+### Version 1.1 (Planned)
+- [ ] Customizable themes
+- [ ] More widget types
+- [ ] Improved touch gestures
+- [ ] Multi-monitor dock
 
-### Version 1.2 (Zukunft)
-- [ ] Plugins-System
-- [ ] Cloud-Synchronisation
-- [ ] Erweiterte Animationen
-- [ ] Performance-Optimierungen
+### Version 1.2 (Future)
+- [ ] Plugin system
+- [ ] Cloud synchronization
+- [ ] Advanced animations
+- [ ] Performance optimizations
 
-## ⚠️ Bekannte Einschränkungen
+## ⚠️ Known Limitations
 
-- **Administrator-Rechte erforderlich** für Shell-Ersatz
-- **Windows 11 spezifisch** - keine Rückwärtskompatibilität
-- **Touch-optimiert** - begrenzte Maus-Unterstützung
-- **Beta-Software** - mögliche Stabilitätsprobleme
+- **Administrator rights required** for shell replacement
+- **Windows 11 specific** - no backward compatibility
+- **Touch-optimized** - limited mouse support
+- **Beta software** - possible stability issues
 
-## 📄 Lizenz
+## 📄 License
 
-Dieses Projekt ist unter der MIT-Lizenz lizenziert. Siehe [LICENSE](LICENSE) für Details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## 👥 Credits
 
-Entwickelt mit ❤️ für die Windows 11 Touch-Community.
+Developed with ❤️ for the Windows 11 touch community.
 
-**Hauptentwickler**: [Brian May Clone](https://github.com/brianmayclone)
+**Main Developer**: [Brian May Clone](https://github.com/brianmayclone)
 
-**Inspiriert durch**: iOS SpringBoard, Windows Phone Live Tiles, macOS Mission Control
+**Inspired by**: iOS SpringBoard, Windows Phone Live Tiles, macOS Mission Control
 
 ---
 
-**⭐ Wenn Ihnen SeroDesk gefällt, geben Sie dem Projekt einen Stern!**
+**⭐ If you like SeroDesk, give the project a star!**
 
-**🐛 Bugs gefunden?** [Issue erstellen](https://github.com/brianmayclone/serodesk/issues)
+**🐛 Found bugs?** [Create an issue](https://github.com/brianmayclone/serodesk/issues)
 
-**💡 Feature-Wünsche?** [Discussion starten](https://github.com/brianmayclone/serodesk/discussions)
+**💡 Feature requests?** [Start a discussion](https://github.com/brianmayclone/serodesk/discussions)

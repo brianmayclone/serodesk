@@ -9,13 +9,72 @@ using SeroDesk.Views;
 
 namespace SeroDesk
 {
+    /// <summary>
+    /// MainWindow serves as the primary desktop shell replacement for Windows 11.
+    /// This class coordinates the iOS-inspired touch interface, manages gesture recognition,
+    /// and orchestrates the interaction between various shell components including the dock,
+    /// launchpad, notification center, and widget system.
+    /// </summary>
+    /// <remarks>
+    /// The MainWindow architecture follows these principles:
+    /// - Acts as a full-screen desktop overlay positioned behind normal windows
+    /// - Implements touch gesture recognition for iOS-like interaction patterns
+    /// - Manages separate windows for dock and launchpad to ensure proper Z-ordering
+    /// - Coordinates wallpaper display and widget management
+    /// - Handles system integration through Windows shell APIs
+    /// 
+    /// Key components managed:
+    /// - Desktop wallpaper rendering and fallback gradients
+    /// - Widget container for desktop widgets (clock, weather, etc.)
+    /// - Status bar with notification and control center access
+    /// - Gesture overlay for touch input processing
+    /// - Separate dock and launchpad windows for proper layering
+    /// </remarks>
     public partial class MainWindow : Window
     {
+        /// <summary>
+        /// Primary view model containing all business logic and data for the main window.
+        /// Manages desktop icons, widget collections, and launchpad content through MVVM pattern.
+        /// </summary>
         private MainViewModel _viewModel;
+        
+        /// <summary>
+        /// Gesture recognition engine for processing touch input and converting raw touch
+        /// events into semantic gestures (swipes, pinches) for iOS-like interaction.
+        /// </summary>
         private GestureRecognizer _gestureRecognizer;
+        
+        /// <summary>
+        /// Separate window for the iOS-style launchpad (SpringBoard) that displays
+        /// all installed applications in a grid layout. Managed as a separate window
+        /// to ensure proper Z-ordering and always-on-top behavior.
+        /// </summary>
         private LaunchpadWindow? _launchpadWindow;
+        
+        /// <summary>
+        /// Separate window for the macOS-style dock that shows running applications
+        /// and favorites. Maintained as an independent window to ensure it stays
+        /// above all other content while remaining accessible.
+        /// </summary>
         private DockWindow? _dockWindow;
         
+        /// <summary>
+        /// Initializes a new instance of the MainWindow class and sets up the core shell infrastructure.
+        /// This constructor establishes the MVVM data context, configures gesture recognition,
+        /// and prepares the window for shell replacement functionality.
+        /// </summary>
+        /// <remarks>
+        /// Constructor initialization sequence:
+        /// 1. Initializes WPF component tree from XAML
+        /// 2. Creates and binds the main view model for MVVM data binding
+        /// 3. Sets up gesture recognition for touch input processing
+        /// 4. Configures event handlers for window lifecycle management
+        /// 
+        /// The gesture recognizer is configured to detect:
+        /// - Swipe gestures for navigation (up/down/left/right)
+        /// - Pinch gestures for zoom operations on widgets
+        /// - Multi-touch interactions for advanced manipulation
+        /// </remarks>
         public MainWindow()
         {
             InitializeComponent();
@@ -30,6 +89,23 @@ namespace SeroDesk
             Loaded += OnWindowLoaded;
         }
         
+        /// <summary>
+        /// Loads and displays the current Windows desktop wallpaper or applies a fallback gradient.
+        /// This method integrates with Windows wallpaper service to maintain visual consistency
+        /// with the user's desktop theme while providing a reliable fallback for error scenarios.
+        /// </summary>
+        /// <remarks>
+        /// Wallpaper loading strategy:
+        /// 1. Attempts to retrieve current wallpaper path from Windows registry/settings
+        /// 2. Validates file existence and loads as WPF BitmapImage if available
+        /// 3. Falls back to an attractive blue gradient if wallpaper is unavailable
+        /// 4. Applies the same gradient if any exception occurs during loading
+        /// 
+        /// The fallback gradient (blue to darker blue) provides:
+        /// - Visual consistency with Windows 11 design language
+        /// - Sufficient contrast for desktop icons and widgets
+        /// - Professional appearance when wallpaper is not accessible
+        /// </remarks>
         private void LoadWallpaper()
         {
             try
@@ -41,7 +117,7 @@ namespace SeroDesk
                 }
                 else
                 {
-                    // Fallback gradient
+                    // Fallback gradient when wallpaper is not available
                     var gradient = new LinearGradientBrush();
                     gradient.StartPoint = new Point(0, 0);
                     gradient.EndPoint = new Point(1, 1);
@@ -52,7 +128,7 @@ namespace SeroDesk
             }
             catch
             {
-                // Fallback gradient on error
+                // Fallback gradient on any error (file corruption, access denied, etc.)
                 var gradient = new LinearGradientBrush();
                 gradient.StartPoint = new Point(0, 0);
                 gradient.EndPoint = new Point(1, 1);
