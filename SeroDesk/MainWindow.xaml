@@ -40,11 +40,7 @@
         
         <!-- SeroLaunchpad moved to separate TopMost window -->
         
-        <!-- iOS-Style Status Bar (Top) -->
-        <views:SeroStatusBar x:Name="StatusBar"
-                            VerticalAlignment="Top"
-                            Panel.ZIndex="200"
-                            IsHitTestVisible="True"/>
+        <!-- Status Bar moved to separate StatusBarWindow for Always-on-Top behavior -->
         
         <!-- SeroDock moved to separate DockWindow for Always-on-Top behavior -->
         

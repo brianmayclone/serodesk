@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Text;
 using SeroDesk.Platform;
 using SeroDesk.ViewModels;
 
@@ -245,6 +246,56 @@ namespace SeroDesk.Views
             }
             
             PlayBounceAnimation(sender as Button);
+        }
+        
+        private void HomeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Show Desktop functionality - minimize all windows
+                MinimizeAllWindows();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to show desktop: {ex.Message}");
+            }
+            
+            PlayBounceAnimation(sender as Button);
+        }
+        
+        private void MinimizeAllWindows()
+        {
+            // Enumerate all windows and minimize visible ones
+            NativeMethods.EnumWindows((hWnd, lParam) =>
+            {
+                if (NativeMethods.IsWindowVisible(hWnd))
+                {
+                    // Get window title to filter out system windows
+                    var length = NativeMethods.GetWindowTextLength(hWnd);
+                    if (length > 0)
+                    {
+                        var title = new StringBuilder(length + 1);
+                        NativeMethods.GetWindowText(hWnd, title, title.Capacity);
+                        
+                        // Skip our own windows and system windows
+                        var windowTitle = title.ToString();
+                        if (!string.IsNullOrEmpty(windowTitle) && 
+                            !windowTitle.Contains("SeroDesk") &&
+                            !windowTitle.Contains("Task View") &&
+                            !windowTitle.Contains("Start") &&
+                            windowTitle != "Program Manager")
+                        {
+                            // Check if window is not already minimized
+                            var windowLong = NativeMethods.GetWindowLong(hWnd, NativeMethods.GWL_STYLE);
+                            if ((windowLong & NativeMethods.WS_MINIMIZE) == 0)
+                            {
+                                NativeMethods.ShowWindow(hWnd, NativeMethods.SW_MINIMIZE);
+                            }
+                        }
+                    }
+                }
+                return true; // Continue enumeration
+            }, IntPtr.Zero);
         }
         
         private void PlayBounceAnimation(Button? button)

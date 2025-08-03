@@ -33,7 +33,7 @@ namespace SeroDesk.Views
             
             _hideTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(3) // Hide after 3 seconds of no mouse activity
+                Interval = TimeSpan.FromSeconds(2) // Hide after 2 seconds of no mouse activity
             };
             _hideTimer.Tick += HideTimer_Tick;
         }
@@ -90,7 +90,7 @@ namespace SeroDesk.Views
             
             var mousePosition = GetCursorPosition();
             var screenHeight = SystemParameters.PrimaryScreenHeight;
-            var dockArea = new Rect(this.Left - 50, screenHeight - 100, this.ActualWidth + 100, 100);
+            var dockArea = new Rect(this.Left - 50, screenHeight - 150, this.ActualWidth + 100, 150);
             
             if (dockArea.Contains(mousePosition))
             {
@@ -100,31 +100,46 @@ namespace SeroDesk.Views
                     ShowDock();
                 }
                 
-                // Reset hide timer
+                // Reset hide timer while mouse is in dock area
                 _hideTimer.Stop();
                 _hideTimer.Start();
             }
-            else if (_isVisible && mousePosition.Y < screenHeight - 150)
+            else if (_isVisible)
             {
-                // Mouse is far from dock area
-                _hideTimer.Stop();
-                _hideTimer.Start();
+                // Mouse is away from dock area - start hide timer if not already running
+                if (!_hideTimer.IsEnabled)
+                {
+                    _hideTimer.Start();
+                }
             }
         }
         
         private void HideTimer_Tick(object? sender, EventArgs e)
         {
+            // Double-check that mouse is not over dock before hiding
             if (_isVisible && !_isAnimating && !IsMouseOverDock())
             {
-                HideDock();
+                var mousePosition = GetCursorPosition();
+                var screenHeight = SystemParameters.PrimaryScreenHeight;
+                
+                // Only hide if mouse is not in the dock area
+                if (mousePosition.Y < screenHeight - 150)
+                {
+                    HideDock();
+                }
             }
+            
+            _hideTimer.Stop();
             _hideTimer.Stop();
         }
         
         private bool IsMouseOverDock()
         {
             var mousePosition = GetCursorPosition();
-            var dockBounds = new Rect(this.Left, this.Top, this.ActualWidth, this.ActualHeight);
+            var screenHeight = SystemParameters.PrimaryScreenHeight;
+            
+            // Expanded dock bounds to include a buffer area
+            var dockBounds = new Rect(this.Left - 25, screenHeight - 120, this.ActualWidth + 50, 120);
             return dockBounds.Contains(mousePosition);
         }
         

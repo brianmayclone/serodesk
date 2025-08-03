@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using SeroDesk.Services;
 
 namespace SeroDesk.Views
@@ -62,6 +63,27 @@ namespace SeroDesk.Views
                 
                 // Exit application
                 Application.Current.Shutdown();
+            }
+        }
+        
+        /// <summary>
+        /// Sets the background transparency of the status bar
+        /// </summary>
+        /// <param name="isTransparent">True for transparent (desktop), false for opaque (overlay)</param>
+        public void SetBackgroundTransparency(bool isTransparent)
+        {
+            if (StatusBarBackground != null)
+            {
+                if (isTransparent)
+                {
+                    // Completely transparent for desktop/launchboard
+                    StatusBarBackground.Background = new SolidColorBrush(Color.FromArgb(0x00, 0x00, 0x00, 0x00));
+                }
+                else
+                {
+                    // Semi-opaque dark background for overlay over applications
+                    StatusBarBackground.Background = new SolidColorBrush(Color.FromArgb(0xC0, 0x00, 0x00, 0x00));
+                }
             }
         }
     }

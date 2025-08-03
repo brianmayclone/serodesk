@@ -149,9 +149,7 @@ namespace SeroDesk
             // Initialize desktop components
             InitializeDesktop();
             
-            // Connect status bar events
-            StatusBar.LeftSideClicked += (s, args) => ShowNotificationCenter();
-            StatusBar.RightSideClicked += (s, args) => ShowControlCenter();
+            // Status bar events are now handled in the separate StatusBarWindow
             
             // Start animation
             FadeIn();

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using SeroDesk.Services;
 using SeroDesk.Platform;
 
@@ -26,6 +27,11 @@ namespace SeroDesk
         /// could cause system instability and conflict with Windows Explorer.
         /// </summary>
         private static Mutex? _mutex;
+        
+        /// <summary>
+        /// Timer to continuously monitor and hide the Windows taskbar
+        /// </summary>
+        private static DispatcherTimer? _taskbarHideTimer;
         
         /// <summary>
         /// Overrides the application startup event to initialize SeroDesk as a shell replacement.
@@ -89,6 +95,14 @@ namespace SeroDesk
             // This sets up DPI awareness, Win32 API wrappers, and system integration
             WindowsIntegration.Initialize();
             
+            // Hide the Windows taskbar since we're replacing it with SeroDesk
+            // This prevents the original taskbar from interfering with our dock
+            TaskbarManager.HideTaskbar();
+            
+            // Start a timer to continuously monitor and hide the taskbar
+            // Windows sometimes restores the taskbar, so we need to keep hiding it
+            StartTaskbarMonitoring();
+            
             // Terminate Explorer.exe and assume shell responsibilities
             // This is the core functionality that makes SeroDesk a true shell replacement
             ExplorerManager.Instance.KillExplorer();
@@ -100,6 +114,60 @@ namespace SeroDesk
             // Load user settings and preferences from persistent storage
             // This includes widget configurations, theme settings, and user customizations
             SettingsManager.Instance.LoadSettings();
+            
+            // Create and show the separate status bar window that overlays all applications
+            CreateStatusBarWindow();
+        }
+        
+        /// <summary>
+        /// Creates and initializes the separate status bar window that can overlay all applications
+        /// </summary>
+        private void CreateStatusBarWindow()
+        {
+            try
+            {
+                var statusBarWindow = new Views.StatusBarWindow();
+                statusBarWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to create status bar window: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Starts a timer to continuously monitor and hide the Windows taskbar.
+        /// This is necessary because Windows sometimes restores the taskbar automatically.
+        /// </summary>
+        private void StartTaskbarMonitoring()
+        {
+            _taskbarHideTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2) // Check every 2 seconds
+            };
+            _taskbarHideTimer.Tick += (sender, e) =>
+            {
+                // Force hide the taskbar if it's visible
+                if (!TaskbarManager.IsTaskbarHidden)
+                {
+                    TaskbarManager.ForceHideTaskbar();
+                }
+                else
+                {
+                    // Even if we think it's hidden, force hide it again to be sure
+                    TaskbarManager.ForceHideTaskbar();
+                }
+            };
+            _taskbarHideTimer.Start();
+        }
+        
+        /// <summary>
+        /// Stops the taskbar monitoring timer
+        /// </summary>
+        private void StopTaskbarMonitoring()
+        {
+            _taskbarHideTimer?.Stop();
+            _taskbarHideTimer = null;
         }
         
         /// <summary>
@@ -120,6 +188,13 @@ namespace SeroDesk
         /// </remarks>
         protected override void OnExit(ExitEventArgs e)
         {
+            // Stop taskbar monitoring
+            StopTaskbarMonitoring();
+            
+            // Restore the Windows taskbar before exiting
+            // This ensures the user has a working taskbar when SeroDesk closes
+            TaskbarManager.ShowTaskbar();
+            
             // Restore Explorer.exe to return user to standard Windows desktop
             // Only restart if Explorer was initially running to respect user's system state
             if (ExplorerManager.Instance.WasExplorerInitiallyRunning)

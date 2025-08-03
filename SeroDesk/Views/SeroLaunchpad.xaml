@@ -26,9 +26,7 @@
         <!-- Subtle Dark Overlay for better readability -->
         <Rectangle Fill="Black" Opacity="0.1"/>
         
-        <!-- iOS-Style Status Bar -->
-        <local:SeroStatusBar VerticalAlignment="Top"
-                            Panel.ZIndex="100"/>
+        <!-- Status Bar moved to separate StatusBarWindow -->
         
         <!-- Canvas-based Icon System -->
         <Grid Margin="80,124,80,200">

@@ -17,20 +17,20 @@
                     HorizontalAlignment="Center"
                     CornerRadius="25"
                     MinWidth="400">
-                <!-- Multi-layer glassmorphism effect without blur on icons -->
+                <!-- Multi-layer glassmorphism effect with enhanced visibility -->
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#50FFFFFF" Offset="0"/>
-                        <GradientStop Color="#30FFFFFF" Offset="0.5"/>
-                        <GradientStop Color="#40FFFFFF" Offset="1"/>
+                        <GradientStop Color="#C0F0F0F0" Offset="0"/>
+                        <GradientStop Color="#B0E8E8E8" Offset="0.5"/>
+                        <GradientStop Color="#C5F0F0F0" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.Background>
                 
                 <!-- Add subtle inner border for glass effect -->
                 <Border.BorderBrush>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#90FFFFFF" Offset="0"/>
-                        <GradientStop Color="#50FFFFFF" Offset="1"/>
+                        <GradientStop Color="#D0FFFFFF" Offset="0"/>
+                        <GradientStop Color="#A0FFFFFF" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.BorderBrush>
                 <Border.BorderThickness>1.5</Border.BorderThickness>
@@ -40,15 +40,54 @@
                               VerticalAlignment="Center"
                               Margin="12,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/> <!-- Home Button -->
+                                <ColumnDefinition Width="Auto"/> <!-- Separator -->
+                                <ColumnDefinition Width="Auto"/> <!-- Running Apps -->
+                                <ColumnDefinition Width="Auto"/> <!-- Separator -->
+                                <ColumnDefinition Width="Auto"/> <!-- Explorer -->
+                                <ColumnDefinition Width="*"/>    <!-- Spacer -->
+                                <ColumnDefinition Width="Auto"/> <!-- Recycle Bin -->
                             </Grid.ColumnDefinitions>
                     
+                    <!-- Home Button (Show Desktop) -->
+                    <Button Grid.Column="0"
+                            x:Name="HomeButton"
+                            Width="40" Height="40"
+                            Margin="4,0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="HomeButton_Click"
+                            ToolTip="Show Desktop"
+                            Style="{StaticResource DockIconStyle}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Grid>
+                                    <Border CornerRadius="8" ClipToBounds="True">
+                                        <Border Background="#40FFFFFF" CornerRadius="8">
+                                            <Grid>
+                                                <!-- Home Icon -->
+                                                <Path Data="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" 
+                                                      Fill="White" 
+                                                      Stretch="Uniform"
+                                                      Width="24" Height="24"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </Border>
+                                </Grid>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                    
+                    <!-- Separator 1 -->
+                    <Rectangle Grid.Column="1"
+                               Width="1" Height="30"
+                               Fill="#60FFFFFF"
+                               Margin="8,0"/>
+                    
                     <!-- Running Apps -->
-                    <ItemsControl Grid.Column="0"
+                    <ItemsControl Grid.Column="2"
                                 x:Name="RunningAppsControl"
                                 ItemsSource="{Binding RunningApplications}">
                         <ItemsControl.ItemsPanel>
@@ -155,7 +194,7 @@
                               VerticalAlignment="Center"/>
                     
                     <!-- Finder (File Explorer) - System Icon -->
-                    <Button Grid.Column="2"
+                    <Button Grid.Column="3"
                             Width="40" Height="40"
                             Margin="4,0"
                             Background="Transparent"
@@ -218,10 +257,10 @@
                     </Button>
                     
                     <!-- Spacer -->
-                    <Border Grid.Column="3" Width="10"/>
+                    <Border Grid.Column="4" Width="10"/>
                     
                     <!-- Recycle Bin (Always on the right) - System Icon -->
-                    <Button Grid.Column="4"
+                    <Button Grid.Column="5"
                             Width="40" Height="40"
                             Margin="4,0"
                             Background="Transparent"

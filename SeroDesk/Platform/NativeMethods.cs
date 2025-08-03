@@ -50,6 +50,9 @@ namespace SeroDesk.Platform
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
         
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+        
         #endregion
         
         #region Taskbar Management
@@ -176,6 +179,7 @@ namespace SeroDesk.Platform
         public const int WS_EX_LAYERED = 0x80000;
         public const int WS_EX_TRANSPARENT = 0x20;
         public const int WS_EX_TOOLWINDOW = 0x80;
+        public const int WS_MINIMIZE = 0x20000000;
         
         // Shell file info flags
         public const uint SHGFI_ICON = 0x100;
