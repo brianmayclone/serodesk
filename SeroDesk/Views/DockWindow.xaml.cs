@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using SeroDesk.Platform;
@@ -37,7 +38,12 @@ namespace SeroDesk.Views
             };
             _hideTimer.Tick += HideTimer_Tick;
         }
-
+        
+        private void DockWindow_SourceInitialized(object sender, EventArgs e)
+        {
+            // No acrylic effects - keep it simple and transparent
+        }
+        
         private void DockWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             // Recenter the dock when its size changes

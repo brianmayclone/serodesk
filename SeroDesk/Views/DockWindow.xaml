@@ -11,9 +11,10 @@
         ResizeMode="NoResize"
         WindowStartupLocation="Manual"
         SizeToContent="WidthAndHeight"
-        Left="0" Top="0">
+        Left="0" Top="0"
+        SourceInitialized="DockWindow_SourceInitialized">
     
-    <Grid>
+    <Grid Background="Transparent">
         <!-- The actual dock content -->
         <views:SeroDock x:Name="Dock"/>
     </Grid>
