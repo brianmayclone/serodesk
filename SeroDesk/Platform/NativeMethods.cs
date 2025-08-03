@@ -121,36 +121,6 @@ namespace SeroDesk.Platform
         [DllImport("dwmapi.dll")]
         public static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
         
-        [DllImport("dwmapi.dll")]
-        public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-        
-        [DllImport("dwmapi.dll")]
-        public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
-        
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr CreateRoundRectRgn(int nLeftRect, int nTopRect, int nRightRect, int nBottomRect, int nWidthEllipse, int nHeightEllipse);
-        
-        [DllImport("gdi32.dll")]
-        public static extern bool DeleteObject(IntPtr hObject);
-        
-        // Windows 11 acrylic backdrop
-        [DllImport("dwmapi.dll")]
-        public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref DWM_SYSTEMBACKDROP_TYPE attrValue, int attrSize);
-        
-        // Modern Windows 10/11 backdrop effects
-        public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-        public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
-        public const int DWMWA_MICA_EFFECT = 1029;
-        
-        public enum DWM_SYSTEMBACKDROP_TYPE
-        {
-            DWMSBT_AUTO = 0,
-            DWMSBT_NONE = 1,
-            DWMSBT_MAINWINDOW = 2,
-            DWMSBT_TRANSIENTWINDOW = 3,
-            DWMSBT_TABBEDWINDOW = 4
-        }
-        
         #endregion
         
         #region Hotkeys

@@ -3,32 +3,37 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:SeroDesk.Platform"
              mc:Ignorable="d" 
              Height="90"
-             d:DesignWidth="1920"
-             Background="Transparent">
+             d:DesignWidth="1920">
     
-    <Grid Background="Transparent">
+    <Grid>
         <!-- iOS/macOS Style Dock with Glassmorphism -->
         <Grid VerticalAlignment="Bottom" Margin="0,0,0,15">
-            <!-- Dock Background - Real Blur Effect using BlurredBackground -->
+            <!-- Dock Background - Simple Glassmorphism (NO BLUR) -->
             <Border x:Name="DockBackground"
                     Height="70"
                     VerticalAlignment="Bottom"
                     HorizontalAlignment="Center"
                     CornerRadius="25"
-                    MinWidth="400"
-                    Background="#99FFFFFF">
+                    MinWidth="400">
+                <!-- Multi-layer glassmorphism effect with enhanced visibility -->
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#C0F0F0F0" Offset="0"/>
+                        <GradientStop Color="#B0E8E8E8" Offset="0.5"/>
+                        <GradientStop Color="#C5F0F0F0" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
                 
                 <!-- Add subtle inner border for glass effect -->
                 <Border.BorderBrush>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#40FFFFFF" Offset="0"/>
-                        <GradientStop Color="#20FFFFFF" Offset="1"/>
+                        <GradientStop Color="#D0FFFFFF" Offset="0"/>
+                        <GradientStop Color="#A0FFFFFF" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.BorderBrush>
-                <Border.BorderThickness>1</Border.BorderThickness>
+                <Border.BorderThickness>1.5</Border.BorderThickness>
                 
                         <!-- Dock Items Container -->
                         <Grid HorizontalAlignment="Center"
@@ -58,7 +63,7 @@
                             <ControlTemplate TargetType="Button">
                                 <Grid>
                                     <Border CornerRadius="8" ClipToBounds="True">
-                                        <Border Background="Transparent" CornerRadius="8">
+                                        <Border Background="#40FFFFFF" CornerRadius="8">
                                             <Grid>
                                                 <!-- Home Icon -->
                                                 <Path Data="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" 
@@ -317,6 +322,23 @@
                         </Button.Triggers>
                     </Button>
                         </Grid>
+            </Border>
+            
+            <!-- Dock Shadow for depth -->
+            <Border x:Name="DockShadow"
+                    Height="60"
+                    VerticalAlignment="Bottom"
+                    HorizontalAlignment="Center"
+                    CornerRadius="16"
+                    MinWidth="320"
+                    Margin="0,0,0,6"
+                    Panel.ZIndex="-1">
+                <Border.Effect>
+                    <DropShadowEffect Color="Black" 
+                                      BlurRadius="25" 
+                                      ShadowDepth="4" 
+                                      Opacity="0.4"/>
+                </Border.Effect>
             </Border>
         </Grid>
         
