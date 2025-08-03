@@ -7,6 +7,10 @@
              mc:Ignorable="d"
              d:DesignHeight="1080" d:DesignWidth="1920">
     
+    <UserControl.Resources>
+        <!-- Resources no longer needed - using Canvas-based SeroIconView -->
+    </UserControl.Resources>
+    
     <!-- Full-Screen iOS-Style App Grid -->
     <Grid x:Name="LaunchpadGrid"
           ManipulationStarting="LaunchpadGrid_ManipulationStarting"
@@ -26,185 +30,42 @@
         <local:SeroStatusBar VerticalAlignment="Top"
                             Panel.ZIndex="100"/>
         
-        <!-- App Grid Container -->
-        <ScrollViewer x:Name="AppScrollViewer"
-                     VerticalScrollBarVisibility="Hidden"
-                     HorizontalScrollBarVisibility="Disabled"
-                     PanningMode="VerticalOnly"
-                     CanContentScroll="True">
+        <!-- Canvas-based Icon System -->
+        <Grid Margin="80,124,80,200">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
             
-            <Grid Margin="80,124,80,200">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                
-                <!-- Page Indicators -->
-                <StackPanel Grid.Row="0" 
-                           Orientation="Horizontal" 
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,40"
-                           x:Name="PageIndicators"
-                           Visibility="{Binding HasMultiplePages, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <!-- Page dots will be added dynamically in code-behind -->
-                </StackPanel>
-                
-                <!-- App Grid (Groups + Individual Apps) -->
-                <ItemsControl Grid.Row="1"
-                            x:Name="AllAppsGrid"
-                            ItemsSource="{Binding DisplayItems}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <!-- iOS-Style 6x8 Grid -->
-                            <UniformGrid Columns="8" Rows="6" 
-                                       HorizontalAlignment="Stretch"
-                                       VerticalAlignment="Top"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    
-                    <!-- Template Selector for Groups vs Individual Apps -->
-                    <ItemsControl.ItemTemplateSelector>
-                        <local:LaunchpadItemTemplateSelector>
-                            <!-- Group Template -->
-                            <local:LaunchpadItemTemplateSelector.GroupTemplate>
-                                <DataTemplate>
-                                    <Button Width="140" Height="140"
-                                            Margin="10"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Click="GroupIcon_Click"
-                                            MouseDoubleClick="GroupIcon_DoubleClick"
-                                            Tag="{Binding}"
-                                            Style="{StaticResource LaunchpadIconStyle}"
-                                            AllowDrop="True"
-                                            Drop="GroupIcon_Drop"
-                                            DragEnter="GroupIcon_DragEnter"
-                                            DragLeave="GroupIcon_DragLeave"
-                                            MouseRightButtonUp="GroupIcon_RightClick">
-                                        <Button.ContextMenu>
-                                            <ContextMenu>
-                                                <MenuItem Header="Rename Group" Click="RenameGroup_Click"/>
-                                                <MenuItem Header="Delete Group" Click="DeleteGroup_Click"/>
-                                            </ContextMenu>
-                                        </Button.ContextMenu>
-                                        <!-- Group Icon Content -->
-                                        <Grid>
-                                            <!-- Group Background -->
-                                            <Border Background="#60FFFFFF"
-                                                   CornerRadius="22"
-                                                   Width="100" Height="100"
-                                                   VerticalAlignment="Top">
-                                                <Border.Effect>
-                                                    <DropShadowEffect BlurRadius="10" Opacity="0.3"/>
-                                                </Border.Effect>
-                                                
-                                                <!-- Group Composite Icon -->
-                                                <Image Source="{Binding GroupIcon}"
-                                                       Width="70" Height="70"/>
-                                            </Border>
-                                            
-                                            <!-- Group Name -->
-                                            <TextBlock Text="{Binding Name}"
-                                                     Foreground="White"
-                                                     FontSize="13"
-                                                     FontWeight="Medium"
-                                                     TextAlignment="Center"
-                                                     TextWrapping="Wrap"
-                                                     VerticalAlignment="Bottom"
-                                                     Margin="5,0,5,10"
-                                                     MaxHeight="32"
-                                                     TextTrimming="CharacterEllipsis"/>
-                                            
-                                            <!-- App Count Badge -->
-                                            <Border Background="#FF3B30"
-                                                   CornerRadius="10"
-                                                   Width="20" Height="20"
-                                                   VerticalAlignment="Top"
-                                                   HorizontalAlignment="Right"
-                                                   Margin="0,5,5,0">
-                                                <TextBlock Text="{Binding Apps.Count}"
-                                                         Foreground="White"
-                                                         FontSize="11"
-                                                         FontWeight="Bold"
-                                                         HorizontalAlignment="Center"
-                                                         VerticalAlignment="Center"/>
-                                            </Border>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </local:LaunchpadItemTemplateSelector.GroupTemplate>
-                            
-                            <!-- Individual App Template -->
-                            <local:LaunchpadItemTemplateSelector.AppTemplate>
-                                <DataTemplate>
-                                    <Button Width="100" Height="100"
-                                            Margin="5"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Click="AppIcon_Click"
-                                            Tag="{Binding}"
-                                            Style="{StaticResource LaunchpadIconStyle}"
-                                            AllowDrop="True"
-                                            PreviewMouseLeftButtonDown="AppIcon_PreviewMouseLeftButtonDown"
-                                            PreviewMouseMove="AppIcon_PreviewMouseMove"
-                                            Drop="AppIcon_Drop"
-                                            DragEnter="AppIcon_DragEnter"
-                                            DragLeave="AppIcon_DragLeave">
-                                        <Grid>
-                                            <!-- Icon Background -->
-                                            <Border Background="#60FFFFFF"
-                                                   CornerRadius="16"
-                                                   Width="70" Height="70"
-                                                   VerticalAlignment="Top">
-                                                <Border.Effect>
-                                                    <DropShadowEffect BlurRadius="12" Opacity="0.4" ShadowDepth="2"/>
-                                                </Border.Effect>
-                                                <Border.Background>
-                                                    <SolidColorBrush Color="White" Opacity="0.25"/>
-                                                </Border.Background>
-                                                <Border.OpacityMask>
-                                                    <VisualBrush>
-                                                        <VisualBrush.Visual>
-                                                            <Border Background="White" CornerRadius="16"/>
-                                                        </VisualBrush.Visual>
-                                                    </VisualBrush>
-                                                </Border.OpacityMask>
-                                                
-                                                <!-- App Icon -->
-                                                <Image Source="{Binding IconImage}"
-                                                       Width="50" Height="50">
-                                                    <Image.Clip>
-                                                        <RectangleGeometry Rect="0,0,50,50" 
-                                                                         RadiusX="10" RadiusY="10"/>
-                                                    </Image.Clip>
-                                                </Image>
-                                            </Border>
-                                            
-                                            <!-- App Name -->
-                                            <TextBlock Text="{Binding Name}"
-                                                     Foreground="White"
-                                                     FontSize="11"
-                                                     FontWeight="Medium"
-                                                     TextAlignment="Center"
-                                                     TextWrapping="Wrap"
-                                                     VerticalAlignment="Bottom"
-                                                     Margin="2,0,2,5"
-                                                     MaxWidth="90"
-                                                     MaxHeight="28"
-                                                     TextTrimming="CharacterEllipsis">
-                                                <TextBlock.Effect>
-                                                    <DropShadowEffect Color="Black" BlurRadius="3" Opacity="0.8" ShadowDepth="1"/>
-                                                </TextBlock.Effect>
-                                            </TextBlock>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </local:LaunchpadItemTemplateSelector.AppTemplate>
-                        </local:LaunchpadItemTemplateSelector>
-                    </ItemsControl.ItemTemplateSelector>
-                </ItemsControl>
-            </Grid>
-        </ScrollViewer>
+            <!-- Page Indicators -->
+            <StackPanel Grid.Row="0" 
+                       Orientation="Horizontal" 
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,40"
+                       x:Name="PageIndicators">
+                <!-- Page dots will be added dynamically -->
+            </StackPanel>
+            
+            <!-- Main Canvas for Icons -->
+            <Border Grid.Row="1" ClipToBounds="True">
+                <Canvas x:Name="IconCanvas" 
+                       Background="Transparent"
+                       ManipulationStarting="IconCanvas_ManipulationStarting"
+                       ManipulationDelta="IconCanvas_ManipulationDelta"
+                       ManipulationCompleted="IconCanvas_ManipulationCompleted"
+                       IsManipulationEnabled="True">
+                    <!-- Icons will be added dynamically as SeroIconView controls -->
+                </Canvas>
+            </Border>
+            
+            <!-- Drop Zone Indicators (will be added dynamically during drag) -->
+            <Canvas x:Name="DropZoneCanvas" 
+                    Grid.Row="1"
+                    Background="Transparent"
+                    IsHitTestVisible="False">
+                <!-- Drop zone indicators will be added here during drag operations -->
+            </Canvas>
+        </Grid>
         
         <!-- Search Bar (optional - can be hidden for desktop mode) -->
         <Border x:Name="SearchBar"
@@ -303,7 +164,6 @@
                     <StackPanel Orientation="Horizontal"
                                HorizontalAlignment="Center">
                         <Button Content="Cancel"
-                               Background="Transparent"
                                Foreground="White"
                                BorderThickness="0"
                                Padding="20,8"

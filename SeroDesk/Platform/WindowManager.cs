@@ -194,10 +194,166 @@ namespace SeroDesk.Platform
                 var process = System.Diagnostics.Process.GetProcessById((int)processId);
                 if (process.MainModule != null)
                 {
-                    return System.Drawing.Icon.ExtractAssociatedIcon(process.MainModule.FileName);
+                    var fileName = process.MainModule.FileName;
+                    
+                    // Special handling for UWP apps
+                    if (IsUWPApp(process))
+                    {
+                        return GetUWPAppIcon(process);
+                    }
+                    
+                    return System.Drawing.Icon.ExtractAssociatedIcon(fileName);
                 }
             }
             catch { }
+            
+            return null;
+        }
+        
+        private bool IsUWPApp(System.Diagnostics.Process process)
+        {
+            try
+            {
+                var fileName = process.MainModule?.FileName;
+                if (fileName == null) return false;
+                
+                // UWP apps typically run from WindowsApps folder
+                if (fileName.Contains("WindowsApps")) return true;
+                
+                // Additional UWP detection methods
+                if (fileName.Contains("Program Files\\WindowsApps")) return true;
+                if (fileName.Contains("Microsoft.WindowsStore")) return true;
+                if (fileName.Contains("Microsoft.Office")) return true;
+                
+                // Check if process has UWP characteristics
+                try
+                {
+                    var processName = process.ProcessName.ToLower();
+                    if (processName == "microsoftstore" || 
+                        processName == "winstore.app" ||
+                        processName.Contains("uwp") ||
+                        processName.Contains("appx"))
+                    {
+                        return true;
+                    }
+                }
+                catch { }
+                
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        private System.Drawing.Icon? GetUWPAppIcon(System.Diagnostics.Process process)
+        {
+            try
+            {
+                if (process.MainModule?.FileName == null) return null;
+                
+                var fileName = process.MainModule.FileName;
+                System.Diagnostics.Debug.WriteLine($"Loading UWP icon for: {fileName}");
+                
+                // Try to get the package name from the executable path
+                if (fileName.Contains("WindowsApps"))
+                {
+                    // Extract package info from path like: C:\Program Files\WindowsApps\Microsoft.WindowsStore_...
+                    var pathParts = fileName.Split('\\');
+                    for (int i = 0; i < pathParts.Length; i++)
+                    {
+                        if (pathParts[i] == "WindowsApps" && i + 1 < pathParts.Length)
+                        {
+                            var packageFolder = pathParts[i + 1];
+                            System.Diagnostics.Debug.WriteLine($"Package folder: {packageFolder}");
+                            
+                            // Try to find the app manifest and extract icon
+                            var packagePath = string.Join("\\", pathParts, 0, i + 2);
+                            var manifestPath = System.IO.Path.Combine(packagePath, "AppxManifest.xml");
+                            
+                            if (System.IO.File.Exists(manifestPath))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Found manifest: {manifestPath}");
+                                var icon = ExtractIconFromUWPManifest(packagePath, manifestPath);
+                                if (icon != null) return icon;
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                // Fallback 1: Try SHGetFileInfo with larger icon
+                var iconSource = IconExtractor.GetIconForFile(fileName, true);
+                if (iconSource != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"UWP icon loaded with SHGetFileInfo");
+                    // Convert ImageSource to Icon - this is tricky, let's try a different approach
+                    return System.Drawing.Icon.ExtractAssociatedIcon(fileName);
+                }
+                
+                // Fallback 2: Try direct extraction
+                return System.Drawing.Icon.ExtractAssociatedIcon(fileName);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UWP icon extraction failed: {ex.Message}");
+            }
+            
+            return null;
+        }
+        
+        private System.Drawing.Icon? ExtractIconFromUWPManifest(string packagePath, string manifestPath)
+        {
+            try
+            {
+                // This is a simplified approach - a full implementation would parse the XML
+                // and extract the correct icon based on scale and size
+                
+                // Look for common icon files in the package
+                var commonIconNames = new[] { "StoreLogo.png", "Square44x44Logo.png", "Square150x150Logo.png", "LargeTile.png", "SmallTile.png" };
+                
+                foreach (var iconName in commonIconNames)
+                {
+                    var iconPath = System.IO.Path.Combine(packagePath, iconName);
+                    if (System.IO.File.Exists(iconPath))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Found UWP icon file: {iconPath}");
+                        
+                        // Convert PNG to Icon
+                        using (var bitmap = new System.Drawing.Bitmap(iconPath))
+                        {
+                            var hIcon = bitmap.GetHicon();
+                            return System.Drawing.Icon.FromHandle(hIcon);
+                        }
+                    }
+                }
+                
+                // Also check Assets folder
+                var assetsPath = System.IO.Path.Combine(packagePath, "Assets");
+                if (System.IO.Directory.Exists(assetsPath))
+                {
+                    var pngFiles = System.IO.Directory.GetFiles(assetsPath, "*.png");
+                    foreach (var pngFile in pngFiles)
+                    {
+                        var fileName = System.IO.Path.GetFileName(pngFile).ToLower();
+                        if (fileName.Contains("logo") || fileName.Contains("icon"))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Found UWP asset icon: {pngFile}");
+                            
+                            using (var bitmap = new System.Drawing.Bitmap(pngFile))
+                            {
+                                var hIcon = bitmap.GetHicon();
+                                return System.Drawing.Icon.FromHandle(hIcon);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UWP manifest icon extraction failed: {ex.Message}");
+            }
             
             return null;
         }

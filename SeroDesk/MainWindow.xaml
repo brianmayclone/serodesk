@@ -46,11 +46,7 @@
                             Panel.ZIndex="200"
                             IsHitTestVisible="True"/>
         
-        <!-- SeroDock (Bottom Dock) -->
-        <views:SeroDock x:Name="SeroDock" 
-                       VerticalAlignment="Bottom"
-                       Panel.ZIndex="100"
-                       IsHitTestVisible="True"/>
+        <!-- SeroDock moved to separate DockWindow for Always-on-Top behavior -->
         
         <!-- Touch Gesture Overlay -->
         <Canvas x:Name="GestureOverlay" 

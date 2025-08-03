@@ -1,6 +1,9 @@
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -27,6 +30,7 @@ namespace SeroDesk.Views
                 {
                     _viewModel.PropertyChanged += ViewModel_PropertyChanged;
                     UpdatePageIndicators();
+                    CreateIconViews();
                 }
             };
             
@@ -90,6 +94,17 @@ namespace SeroDesk.Views
             {
                 await _viewModel.LoadAllApplicationsAsync();
             }
+            
+            // Ensure pages are created after layout is updated
+            this.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_viewModel != null)
+                {
+                    // Force update of display items and pages
+                    _viewModel.RefreshLayout();
+                    CreateIconViews();
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
             
             // Zoom in animation
             var zoomIn = new DoubleAnimation
@@ -314,18 +329,13 @@ namespace SeroDesk.Views
         
         private Button? FindGroupButton(AppGroup group)
         {
-            // Search through the AllAppsGrid items
-            var itemsControl = AllAppsGrid;
-            for (int i = 0; i < itemsControl.Items.Count; i++)
+            // Search through all icon views for the group
+            foreach (SeroIconView iconView in IconCanvas.Children.OfType<SeroIconView>())
             {
-                var container = itemsControl.ItemContainerGenerator.ContainerFromIndex(i) as ContentPresenter;
-                if (container != null)
+                if (iconView.IsGroup && iconView.AppGroup?.Id == group.Id)
                 {
-                    var button = FindVisualChild<Button>(container);
-                    if (button?.Tag is AppGroup buttonGroup && buttonGroup.Id == group.Id)
-                    {
-                        return button;
-                    }
+                    // Return the first button found in the icon view (there should be one in the template)
+                    return FindVisualChild<Button>(iconView);
                 }
             }
             return null;
@@ -414,314 +424,431 @@ namespace SeroDesk.Views
             GroupNameTextBox.Focus();
         }
         
-        // Drag & Drop functionality for app grouping and reordering
-        private bool _isDragging = false;
-        private Point _startPoint;
-        private AppIcon? _draggedApp;
-        private DragDropAdorner? _dragAdorner;
-        private AdornerLayer? _adornerLayer;
-        private Timer? _reorderTimer;
-        private Point _lastDragPosition;
-        private bool _isReorderMode = false;
+        // Removed old drag and drop variables - using Canvas system now
         
-        private void AppIcon_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        // Old mouse handling removed - using Canvas-based system now
+        
+        // Canvas-based Icon System Event Handlers
+        private SeroIconView? _draggedIcon;
+        private Point _dragOffset;
+        private System.Threading.Timer? _arrangementTimer;
+        private Point _lastTargetGridPos = new Point(-1, -1);
+        
+        private void OnIconClicked(object? sender, IconClickEventArgs e)
         {
-            if (sender is Button button && button.Tag is AppIcon app)
+            if (e.IsGroup && e.AppGroup != null)
             {
-                _startPoint = e.GetPosition(button);
-                _draggedApp = app;
+                // Show group expanded view
+                ShowGroupExpandedView(e.AppGroup);
+            }
+            else if (e.AppIcon != null)
+            {
+                // Launch app
+                e.AppIcon.Launch();
+                PlayLaunchAnimation(e.IconView);
             }
         }
         
-        private void AppIcon_PreviewMouseMove(object sender, MouseEventArgs e)
+        private void OnIconDragStarted(object? sender, IconDragEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && _draggedApp != null && !_isDragging)
+            _draggedIcon = e.IconView;
+            
+            if (_draggedIcon != null)
             {
-                if (sender is Button button)
-                {
-                    Point currentPosition = e.GetPosition(button);
-                    var diff = _startPoint - currentPosition;
-                    
-                    if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
-                        Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
-                    {
-                        _isDragging = true;
-                        
-                        // Start iOS-style reorder mode
-                        StartReorderMode(button);
-                        
-                        // Create visual drag feedback
-                        StartVisualDrag(button);
-                        
-                        // Start drag operation with custom tracking
-                        StartCustomDragDrop(button);
-                        
-                        // Clean up after drag
-                        EndVisualDrag();
-                        EndReorderMode();
-                        
-                        _isDragging = false;
-                        _draggedApp = null;
-                    }
-                }
+                _dragOffset = new Point(
+                    e.Position.X - Canvas.GetLeft(_draggedIcon),
+                    e.Position.Y - Canvas.GetTop(_draggedIcon)
+                );
+                
+                // Start wiggle animation on all other icons
+                StartWiggleAnimationForAll(except: _draggedIcon);
+                
+                System.Diagnostics.Debug.WriteLine($"Drag started for {(_draggedIcon.AppIcon?.Name ?? _draggedIcon.AppGroup?.Name)}");
             }
         }
         
-        private void StartReorderMode(Button sourceButton)
+        private void OnIconDragMoved(object? sender, IconDragEventArgs e)
         {
-            _isReorderMode = true;
+            if (_draggedIcon == null) return;
             
-            // Start timer for continuous reorder checking
-            _reorderTimer = new Timer(CheckForReorder, null, 50, 50);
+            // Update dragged icon position
+            var newX = e.Position.X - _dragOffset.X;
+            var newY = e.Position.Y - _dragOffset.Y;
             
-            // Add wiggle animation to all icons (iOS style)
-            StartWiggleAnimation();
+            Canvas.SetLeft(_draggedIcon, newX);
+            Canvas.SetTop(_draggedIcon, newY);
+            
+            // Calculate target grid position
+            var targetGridPos = CalculateGridPosition(e.Position);
+            
+            // Only trigger rearrangement if target position changed
+            if (targetGridPos != _lastTargetGridPos)
+            {
+                _lastTargetGridPos = targetGridPos;
+                
+                // Cancel previous timer
+                _arrangementTimer?.Dispose();
+                
+                // Start new timer for delayed rearrangement (400ms)
+                _arrangementTimer = new System.Threading.Timer(
+                    callback: (state) => {
+                        Application.Current.Dispatcher.Invoke(() => {
+                            if (targetGridPos == _lastTargetGridPos && _draggedIcon != null)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Delayed rearrangement to ({targetGridPos.X},{targetGridPos.Y})");
+                                AnimateIconsToMakeSpace(targetGridPos, _draggedIcon);
+                            }
+                        });
+                    },
+                    state: null,
+                    dueTime: 400,
+                    period: System.Threading.Timeout.Infinite
+                );
+            }
         }
         
-        private void EndReorderMode()
+        private void OnIconDragCompleted(object? sender, IconDragEventArgs e)
         {
-            _isReorderMode = false;
+            if (_draggedIcon == null) return;
             
-            // Stop reorder timer
-            _reorderTimer?.Dispose();
-            _reorderTimer = null;
+            // Cancel any pending arrangement timer
+            _arrangementTimer?.Dispose();
+            _arrangementTimer = null;
+            _lastTargetGridPos = new Point(-1, -1);
+            
+            // Check if dropped on another icon (for group creation)
+            var targetIcon = GetIconAtPosition(e.Position, _draggedIcon);
+            System.Diagnostics.Debug.WriteLine($"Drop check: targetIcon={targetIcon?.AppIcon?.Name}, isGroup={targetIcon?.IsGroup}");
+            
+            if (targetIcon != null && !targetIcon.IsGroup && _draggedIcon.AppIcon != null && targetIcon.AppIcon != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Attempting to create group from {_draggedIcon.AppIcon.Name} + {targetIcon.AppIcon.Name}");
+                // Create group by combining two icons
+                CreateGroupFromIcons(_draggedIcon.AppIcon, targetIcon.AppIcon);
+                System.Diagnostics.Debug.WriteLine($"Group creation completed");
+            }
+            else
+            {
+                // Normal drop - finalize position
+                var targetGridPos = CalculateGridPosition(e.Position);
+                System.Diagnostics.Debug.WriteLine($"Normal drop to grid position ({targetGridPos.X},{targetGridPos.Y})");
+                FinalizeIconPositions(targetGridPos, _draggedIcon);
+            }
             
             // Stop wiggle animation
-            StopWiggleAnimation();
+            StopWiggleAnimationForAll();
+            
+            _draggedIcon = null;
+            
+            System.Diagnostics.Debug.WriteLine("Drag completed");
         }
         
-        private void StartCustomDragDrop(Button sourceButton)
+        private SeroIconView? GetIconAtPosition(Point position, SeroIconView? excludeIcon = null)
         {
-            // Custom drag implementation that updates position continuously
-            var window = Window.GetWindow(this);
-            if (window == null) return;
+            System.Diagnostics.Debug.WriteLine($"GetIconAtPosition: checking position ({position.X},{position.Y})");
             
-            MouseEventHandler moveHandler = null;
-            MouseButtonEventHandler upHandler = null;
-            
-            moveHandler = (s, e) =>
+            foreach (SeroIconView icon in IconCanvas.Children.OfType<SeroIconView>())
             {
-                var position = e.GetPosition(AllAppsGrid);
-                _lastDragPosition = position;
+                if (icon == excludeIcon) continue;
                 
-                // Update drag visual position
-                if (_dragAdorner != null)
+                var left = Canvas.GetLeft(icon);
+                var top = Canvas.GetTop(icon);
+                
+                // Use default values if Canvas position is NaN
+                if (double.IsNaN(left)) left = 0;
+                if (double.IsNaN(top)) top = 0;
+                
+                var iconBounds = new Rect(left, top, 80, 100); // Use fixed size
+                
+                System.Diagnostics.Debug.WriteLine($"Icon {icon.AppIcon?.Name}: bounds=({left},{top},80,100)");
+                
+                if (iconBounds.Contains(position))
                 {
-                    _dragAdorner.UpdatePosition(position.X - 50, position.Y - 50);
+                    System.Diagnostics.Debug.WriteLine($"Found icon at position: {icon.AppIcon?.Name}");
+                    return icon;
                 }
-            };
+            }
             
-            upHandler = (s, e) =>
-            {
-                window.MouseMove -= moveHandler;
-                window.MouseLeftButtonUp -= upHandler;
-                
-                // Handle final drop
-                HandleIconReorderDrop();
-            };
-            
-            window.MouseMove += moveHandler;
-            window.MouseLeftButtonUp += upHandler;
+            System.Diagnostics.Debug.WriteLine("No icon found at position");
+            return null;
         }
         
-        private void CheckForReorder(object? state)
+        private void CreateGroupFromIcons(AppIcon app1, AppIcon app2)
         {
-            if (!_isReorderMode || _draggedApp == null) return;
-            
-            Application.Current.Dispatcher.Invoke(() =>
+            if (_viewModel == null) 
             {
-                var targetIndex = GetGridIndexFromPosition(_lastDragPosition);
-                if (targetIndex >= 0 && targetIndex < _viewModel?.DisplayItems.Count)
+                System.Diagnostics.Debug.WriteLine("CreateGroupFromIcons: _viewModel is null");
+                return;
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"CreateGroupFromIcons: Creating group with {app1.Name} and {app2.Name}");
+            
+            // Create new group
+            var groupName = $"{app1.Name} & {app2.Name}";
+            var group = _viewModel.CreateGroup(groupName);
+            
+            if (group != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Group created: {group.Name}");
+                
+                // Add both apps to group
+                _viewModel.AddAppToGroup(app1, group);
+                _viewModel.AddAppToGroup(app2, group);
+                
+                System.Diagnostics.Debug.WriteLine($"Apps added to group. Group now has {group.Apps.Count} apps");
+                
+                // Refresh the icon display
+                CreateIconViews();
+                System.Diagnostics.Debug.WriteLine("Icon views refreshed");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("Failed to create group");
+            }
+        }
+        
+        private Point CalculateGridPosition(Point screenPosition)
+        {
+            var canvasWidth = IconCanvas.ActualWidth;
+            var canvasHeight = IconCanvas.ActualHeight;
+            
+            // Ensure we have sane values BEFORE any calculations
+            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
+            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
+            
+            var columnsPerPage = 8;
+            var rowsPerPage = 6;
+            
+            var horizontalSpacing = canvasWidth / columnsPerPage;
+            var verticalSpacing = canvasHeight / rowsPerPage;
+            
+            // Calculate which page we're on (support for multiple pages)
+            var currentPageOffset = _viewModel?.CurrentPage ?? 0;
+            var adjustedX = screenPosition.X + (currentPageOffset * canvasWidth);
+            
+            var globalCol = (int)(adjustedX / horizontalSpacing);
+            var row = Math.Max(0, Math.Min(rowsPerPage - 1, (int)(screenPosition.Y / verticalSpacing)));
+            
+            // Keep within current page bounds for now (multi-page drag later)
+            var col = Math.Max(0, Math.Min(columnsPerPage - 1, globalCol % columnsPerPage));
+            
+            System.Diagnostics.Debug.WriteLine($"CalculateGridPosition: screen=({screenPosition.X},{screenPosition.Y}) -> grid=({col},{row})");
+            return new Point(col, row);
+        }
+        
+        private void AnimateIconsToMakeSpace(Point targetGridPos, SeroIconView draggedIcon)
+        {
+            System.Diagnostics.Debug.WriteLine($"AnimateIconsToMakeSpace: target=({targetGridPos.X},{targetGridPos.Y})");
+            
+            // Get same dimensions as used in CreateIconViews
+            var canvasWidth = IconCanvas.ActualWidth;
+            var canvasHeight = IconCanvas.ActualHeight;
+            
+            // Ensure we have sane values BEFORE any calculations
+            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
+            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
+            
+            var iconWidth = 80.0;
+            var iconHeight = 100.0;
+            var columnsPerPage = 8;
+            var rowsPerPage = 6;
+            var iconsPerPage = columnsPerPage * rowsPerPage;
+            
+            var horizontalSpacing = canvasWidth / columnsPerPage;
+            var verticalSpacing = canvasHeight / rowsPerPage;
+            
+            // Calculate target index in global grid
+            var targetIndex = (int)(targetGridPos.Y * columnsPerPage + targetGridPos.X);
+            
+            // Get all icons except the dragged one, create a complete layout
+            var allIcons = IconCanvas.Children.OfType<SeroIconView>()
+                .Where(icon => icon != draggedIcon)
+                .ToList();
+            
+            // Create array representing the final layout with target position reserved
+            var finalLayout = new SeroIconView?[iconsPerPage];
+            
+            // Place existing icons, skipping the target position
+            int currentLayoutIndex = 0;
+            foreach (var icon in allIcons)
+            {
+                // Skip target position
+                if (currentLayoutIndex == targetIndex)
+                    currentLayoutIndex++;
+                
+                // Place icon at current position
+                if (currentLayoutIndex < iconsPerPage)
                 {
-                    var currentIndex = _viewModel.DisplayItems.IndexOf(_draggedApp);
-                    if (currentIndex >= 0 && currentIndex != targetIndex)
+                    finalLayout[currentLayoutIndex] = icon;
+                    
+                    // Calculate new grid position
+                    var newRow = currentLayoutIndex / columnsPerPage;
+                    var newCol = currentLayoutIndex % columnsPerPage;
+                    var newX = newCol * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
+                    var newY = newRow * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                    
+                    // Only animate if position changed
+                    var oldIndex = (int)(icon.GridPosition.Y * columnsPerPage + icon.GridPosition.X);
+                    if (oldIndex != currentLayoutIndex)
                     {
-                        // Perform live reorder
-                        _viewModel.MoveItem(currentIndex, targetIndex);
+                        System.Diagnostics.Debug.WriteLine($"Moving {icon.AppIcon?.Name} from {oldIndex} to {currentLayoutIndex} = ({newX},{newY})");
+                        icon.AnimateToPosition(new Point(newX, newY), TimeSpan.FromMilliseconds(200));
+                        icon.GridPosition = new Point(newCol, newRow);
+                    }
+                    
+                    currentLayoutIndex++;
+                }
+            }
+        }
+        
+        private void FinalizeIconPositions(Point targetGridPos, SeroIconView draggedIcon)
+        {
+            System.Diagnostics.Debug.WriteLine($"FinalizeIconPositions: target=({targetGridPos.X},{targetGridPos.Y})");
+            
+            // Get same dimensions as used in CreateIconViews
+            var canvasWidth = IconCanvas.ActualWidth;
+            var canvasHeight = IconCanvas.ActualHeight;
+            
+            // Ensure we have sane values BEFORE any calculations
+            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
+            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
+            
+            var iconWidth = 80.0;
+            var iconHeight = 100.0;
+            var columnsPerPage = 8;
+            var rowsPerPage = 6;
+            
+            var horizontalSpacing = canvasWidth / columnsPerPage;
+            var verticalSpacing = canvasHeight / rowsPerPage;
+            
+            var finalX = targetGridPos.X * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
+            var finalY = targetGridPos.Y * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+            
+            System.Diagnostics.Debug.WriteLine($"Snap to grid: ({finalX},{finalY}) with spacing {horizontalSpacing}x{verticalSpacing}");
+            
+            draggedIcon.AnimateToPosition(new Point(finalX, finalY), TimeSpan.FromMilliseconds(200));
+            draggedIcon.GridPosition = targetGridPos;
+        }
+        
+        private void StartWiggleAnimationForAll(SeroIconView? except = null)
+        {
+            foreach (SeroIconView icon in IconCanvas.Children.OfType<SeroIconView>())
+            {
+                if (icon != except)
+                {
+                    icon.StartWiggleAnimation();
+                }
+            }
+        }
+        
+        private void StopWiggleAnimationForAll()
+        {
+            foreach (SeroIconView icon in IconCanvas.Children.OfType<SeroIconView>())
+            {
+                icon.StopWiggleAnimation();
+            }
+        }
+        
+        private void PlayLaunchAnimation(SeroIconView? iconView)
+        {
+            if (iconView == null) return;
+            
+            // Simple scale-up animation for launch feedback
+            var scaleTransform = new ScaleTransform(1.0, 1.0);
+            iconView.RenderTransform = scaleTransform;
+            iconView.RenderTransformOrigin = new Point(0.5, 0.5);
+            
+            var scaleAnimation = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 1.3,
+                Duration = TimeSpan.FromMilliseconds(150),
+                AutoReverse = true,
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
+        }
+        
+        // Canvas Manipulation Events (for page swiping and touch forwarding)
+        private void IconCanvas_ManipulationStarting(object sender, ManipulationStartingEventArgs e)
+        {
+            e.ManipulationContainer = IconCanvas;
+            e.Mode = ManipulationModes.All;
+            
+            // Note: ManipulationOrigin is not available in ManipulationStartingEventArgs
+            // Icon-level manipulation handling is done in the individual SeroIconView components
+        }
+        
+        private void IconCanvas_ManipulationDelta(object sender, ManipulationDeltaEventArgs e)
+        {
+            // Only handle page swiping if not dragging an icon
+            if (_draggedIcon == null)
+            {
+                // Handle horizontal swiping for page navigation
+                var translation = e.CumulativeManipulation.Translation.X;
+                var threshold = 150; // Increase threshold to avoid accidental page changes
+                
+                // Visual feedback during swipe
+                UpdateSwipeVisualFeedback(translation);
+                
+                // Check for page change threshold
+                if (Math.Abs(translation) > threshold)
+                {
+                    if (translation > 0 && (_viewModel?.CurrentPage ?? 0) > 0)
+                    {
+                        // Swipe right - previous page
+                        _viewModel?.PreviousPage();
+                        e.Complete(); // Complete the manipulation
+                    }
+                    else if (translation < 0 && (_viewModel?.CurrentPage ?? 0) < (_viewModel?.TotalPages ?? 1) - 1)
+                    {
+                        // Swipe left - next page
+                        _viewModel?.NextPage();
+                        e.Complete(); // Complete the manipulation
                     }
                 }
-            });
-        }
-        
-        private int GetGridIndexFromPosition(Point position)
-        {
-            try
-            {
-                // Calculate grid position based on mouse coordinates
-                var gridBounds = AllAppsGrid.RenderSize;
-                var itemWidth = gridBounds.Width / 8; // 8 columns
-                var itemHeight = gridBounds.Height / 6; // 6 rows
-                
-                var col = (int)(position.X / itemWidth);
-                var row = (int)(position.Y / itemHeight);
-                
-                col = Math.Max(0, Math.Min(7, col));
-                row = Math.Max(0, Math.Min(5, row));
-                
-                return row * 8 + col;
-            }
-            catch
-            {
-                return -1;
             }
         }
         
-        private void HandleIconReorderDrop()
+        private void IconCanvas_ManipulationCompleted(object sender, ManipulationCompletedEventArgs e)
         {
-            // Final position handling - already done by live updates
-            // Just ensure the layout is refreshed
-            _viewModel?.RefreshLayout();
+            // Reset any visual feedback
+            ResetSwipeVisualFeedback();
         }
         
-        private void StartWiggleAnimation()
+        private void UpdateSwipeVisualFeedback(double translation)
         {
-            var buttons = FindVisualChildren<Button>(AllAppsGrid);
+            // Add subtle visual feedback for page swiping
+            var translateTransform = IconCanvas?.RenderTransform as TranslateTransform;
+            if (translateTransform == null && IconCanvas != null)
+            {
+                translateTransform = new TranslateTransform();
+                IconCanvas.RenderTransform = translateTransform;
+            }
             
-            foreach (var button in buttons)
+            if (translateTransform != null)
             {
-                if (button.Tag == _draggedApp) continue; // Don't wiggle the dragged item
-                
-                var wiggleStoryboard = new Storyboard();
-                wiggleStoryboard.RepeatBehavior = RepeatBehavior.Forever;
-                
-                var rotateAnimation = new DoubleAnimation
+                // Limit the translation for rubber band effect
+                var maxTranslate = 50;
+                var limitedTranslation = Math.Max(-maxTranslate, Math.Min(maxTranslate, translation * 0.3));
+                translateTransform.X = limitedTranslation;
+            }
+        }
+        
+        private void ResetSwipeVisualFeedback()
+        {
+            var translateTransform = IconCanvas?.RenderTransform as TranslateTransform;
+            if (translateTransform != null)
+            {
+                var resetAnimation = new DoubleAnimation
                 {
-                    From = -1,
-                    To = 1,
-                    Duration = TimeSpan.FromMilliseconds(100),
-                    AutoReverse = true,
-                    RepeatBehavior = RepeatBehavior.Forever
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
                 };
-                
-                var rotateTransform = new RotateTransform();
-                button.RenderTransform = rotateTransform;
-                button.RenderTransformOrigin = new Point(0.5, 0.5);
-                
-                Storyboard.SetTarget(rotateAnimation, rotateTransform);
-                Storyboard.SetTargetProperty(rotateAnimation, new PropertyPath(RotateTransform.AngleProperty));
-                
-                wiggleStoryboard.Children.Add(rotateAnimation);
-                wiggleStoryboard.Begin();
-                
-                // Store storyboard for cleanup
-                button.Tag = $"{button.Tag}_wiggle:{wiggleStoryboard.GetHashCode()}";
-            }
-        }
-        
-        private void StopWiggleAnimation()
-        {
-            var buttons = FindVisualChildren<Button>(AllAppsGrid);
-            
-            foreach (var button in buttons)
-            {
-                // Stop any running storyboards
-                button.BeginStoryboard(new Storyboard(), HandoffBehavior.SnapshotAndReplace);
-                
-                // Reset transform
-                button.RenderTransform = null;
-                
-                // Clean up tag
-                if (button.Tag?.ToString()?.Contains("_wiggle:") == true)
-                {
-                    var originalTag = button.Tag.ToString()?.Split("_wiggle:")[0];
-                    // Restore original tag based on type
-                    if (originalTag == "SeroDesk.Models.AppIcon")
-                        button.Tag = button.DataContext;
-                    else
-                        button.Tag = originalTag;
-                }
-            }
-        }
-        
-        private void StartVisualDrag(Button sourceButton)
-        {
-            try
-            {
-                // Get the adorner layer
-                _adornerLayer = AdornerLayer.GetAdornerLayer(this);
-                if (_adornerLayer == null) return;
-
-                // Create a visual representation of the dragged item
-                var dragVisual = CreateDragVisual(sourceButton);
-                if (dragVisual == null) return;
-
-                // Create and add the adorner
-                _dragAdorner = new DragDropAdorner(this, dragVisual);
-                _adornerLayer.Add(_dragAdorner);
-
-                // Make the original button semi-transparent during drag
-                sourceButton.Opacity = 0.5;
-            }
-            catch
-            {
-                // Ignore errors during visual drag setup
-            }
-        }
-        
-        private UIElement? CreateDragVisual(Button sourceButton)
-        {
-            try
-            {
-                // Create a copy of the button for drag visual
-                var dragButton = new Button
-                {
-                    Width = sourceButton.ActualWidth,
-                    Height = sourceButton.ActualHeight,
-                    Background = sourceButton.Background,
-                    BorderThickness = sourceButton.BorderThickness,
-                    CornerRadius = new CornerRadius(16),
-                    Content = sourceButton.Content,
-                    ContentTemplate = sourceButton.ContentTemplate,
-                    Opacity = 0.8,
-                    IsHitTestVisible = false
-                };
-
-                // Apply transform for slight scale and rotation (iOS style)
-                var transform = new CompositeTransform
-                {
-                    ScaleX = 1.1,
-                    ScaleY = 1.1,
-                    Rotation = 2
-                };
-                dragButton.RenderTransform = transform;
-
-                return dragButton;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-        
-        private void EndVisualDrag()
-        {
-            try
-            {
-                // Remove the adorner
-                if (_dragAdorner != null && _adornerLayer != null)
-                {
-                    _adornerLayer.Remove(_dragAdorner);
-                }
-
-                // Reset all button opacities
-                ResetButtonOpacities();
-
-                _dragAdorner = null;
-                _adornerLayer = null;
-            }
-            catch
-            {
-                // Ignore cleanup errors
-            }
-        }
-        
-        private void ResetButtonOpacities()
-        {
-            // Find all buttons in the grid and reset their opacity
-            var buttons = FindVisualChildren<Button>(AllAppsGrid);
-            foreach (var button in buttons)
-            {
-                button.Opacity = 1.0;
+                translateTransform.BeginAnimation(TranslateTransform.XProperty, resetAnimation);
             }
         }
         
@@ -738,95 +865,7 @@ namespace SeroDesk.Views
             }
         }
         
-        private void AppIcon_Drop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent("AppIcon") && sender is Button targetButton && targetButton.Tag is AppIcon targetApp)
-            {
-                var sourceApp = e.Data.GetData("AppIcon") as AppIcon;
-                if (sourceApp != null && sourceApp != targetApp && _viewModel != null)
-                {
-                    // Create a new group with both apps
-                    var group = _viewModel.CreateGroup($"{sourceApp.Name} & {targetApp.Name}");
-                    _viewModel.AddAppToGroup(sourceApp, group);
-                    _viewModel.AddAppToGroup(targetApp, group);
-                }
-            }
-            
-            // Remove drop visual feedback
-            if (sender is Button button && button.Parent is Grid grid)
-            {
-                grid.Background = System.Windows.Media.Brushes.Transparent;
-            }
-        }
-        
-        private void AppIcon_DragEnter(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent("AppIcon") && sender is Button button)
-            {
-                // Add visual feedback
-                if (button.Parent is Grid grid)
-                {
-                    grid.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x40, 0x00, 0x7A, 0xFF));
-                }
-                e.Effects = DragDropEffects.Move;
-            }
-            else
-            {
-                e.Effects = DragDropEffects.None;
-            }
-        }
-        
-        private void AppIcon_DragLeave(object sender, DragEventArgs e)
-        {
-            if (sender is Button button && button.Parent is Grid grid)
-            {
-                grid.Background = System.Windows.Media.Brushes.Transparent;
-            }
-        }
-        
-        private void GroupIcon_Drop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent("AppIcon") && sender is Button groupButton && groupButton.Tag is AppGroup targetGroup)
-            {
-                var sourceApp = e.Data.GetData("AppIcon") as AppIcon;
-                if (sourceApp != null && _viewModel != null)
-                {
-                    // Add app to existing group
-                    _viewModel.AddAppToGroup(sourceApp, targetGroup);
-                }
-            }
-            
-            // Remove drop visual feedback
-            if (sender is Button button && button.Parent is Grid grid)
-            {
-                grid.Background = System.Windows.Media.Brushes.Transparent;
-            }
-        }
-        
-        private void GroupIcon_DragEnter(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent("AppIcon") && sender is Button button)
-            {
-                // Add visual feedback
-                if (button.Parent is Grid grid)
-                {
-                    grid.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x60, 0x00, 0x7A, 0xFF));
-                }
-                e.Effects = DragDropEffects.Move;
-            }
-            else
-            {
-                e.Effects = DragDropEffects.None;
-            }
-        }
-        
-        private void GroupIcon_DragLeave(object sender, DragEventArgs e)
-        {
-            if (sender is Button button && button.Parent is Grid grid)
-            {
-                grid.Background = System.Windows.Media.Brushes.Transparent;
-            }
-        }
+        // Removed complex drag/drop handlers - will add simple ones later
         
         // Group management
         private AppGroup? _groupBeingRenamed;
@@ -841,6 +880,13 @@ namespace SeroDesk.Views
                 e.PropertyName == nameof(LaunchpadViewModel.CurrentPage))
             {
                 UpdatePageIndicators();
+                UpdatePagesLayout();
+            }
+            else if (e.PropertyName == nameof(LaunchpadViewModel.AllApplications) || 
+                     e.PropertyName == nameof(LaunchpadViewModel.AppGroups))
+            {
+                System.Diagnostics.Debug.WriteLine($"PropertyChanged triggered for {e.PropertyName}, creating icon views");
+                CreateIconViews();
             }
         }
         
@@ -859,25 +905,29 @@ namespace SeroDesk.Views
             
             // Visual feedback during swipe
             var translation = e.CumulativeManipulation.Translation.X;
-            var progress = Math.Max(-1, Math.Min(1, translation / 200.0)); // Normalize to -1 to 1
+            var pageWidth = IconCanvas?.ActualWidth ?? 1600;
+            
+            // Calculate current offset with swipe feedback
+            var currentOffset = -(_viewModel?.CurrentPage ?? 0) * pageWidth;
+            var swipeOffset = Math.Max(-pageWidth * 0.3, Math.Min(pageWidth * 0.3, translation));
             
             // Apply transform for swipe preview
-            if (AllAppsGrid.RenderTransform is TranslateTransform transform)
+            var translateTransform = IconCanvas?.RenderTransform as TranslateTransform;
+            if (translateTransform == null && IconCanvas != null)
             {
-                transform.X = progress * 50; // Subtle movement preview
+                translateTransform = new TranslateTransform();
+                IconCanvas.RenderTransform = translateTransform;
             }
-            else
+            
+            if (translateTransform != null)
             {
-                AllAppsGrid.RenderTransform = new TranslateTransform(progress * 50, 0);
+                translateTransform.X = currentOffset + swipeOffset;
             }
         }
         
         private void SeroLaunchpad_ManipulationCompleted(object? sender, ManipulationCompletedEventArgs e)
         {
             _isSwipeInProgress = false;
-            
-            // Reset transform
-            AllAppsGrid.RenderTransform = new TranslateTransform(0, 0);
             
             var swipeDistance = e.TotalManipulation.Translation.X;
             var swipeThreshold = 100; // Minimum distance for page change
@@ -893,6 +943,11 @@ namespace SeroDesk.Views
                 {
                     // Swipe left - go to next page
                     _viewModel.NextPage();
+                }
+                else
+                {
+                    // Not enough swipe - return to current page
+                    UpdatePagesLayout();
                 }
             }
         }
@@ -923,6 +978,146 @@ namespace SeroDesk.Views
                 PageIndicators.Children.Add(dot);
             }
         }
+        
+        private void CreateIconViews()
+        {
+            if (_viewModel == null || IconCanvas == null) return;
+            
+            System.Diagnostics.Debug.WriteLine($"CreateIconViews: AllApplications={_viewModel.AllApplications.Count}, AppGroups={_viewModel.AppGroups.Count}");
+            
+            // Only create views if we have apps to display
+            if (_viewModel.AllApplications.Count == 0 && _viewModel.AppGroups.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("No apps to display yet, skipping CreateIconViews");
+                return;
+            }
+            
+            IconCanvas.Children.Clear();
+            
+            // Calculate grid dimensions - ensure valid dimensions FIRST
+            var canvasWidth = IconCanvas.ActualWidth;
+            var canvasHeight = IconCanvas.ActualHeight;
+            
+            // Ensure we have sane values BEFORE any calculations
+            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
+            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
+            
+            var iconWidth = 80.0;
+            var iconHeight = 100.0;
+            var columnsPerPage = 8;
+            var rowsPerPage = 6;
+            var iconsPerPage = columnsPerPage * rowsPerPage;
+            
+            // Calculate spacing with validated dimensions
+            var horizontalSpacing = canvasWidth / columnsPerPage;
+            var verticalSpacing = canvasHeight / rowsPerPage;
+            
+            System.Diagnostics.Debug.WriteLine($"Canvas: {canvasWidth}x{canvasHeight}, Spacing: {horizontalSpacing}x{verticalSpacing}");
+            
+            // Create icon views for all apps
+            int iconIndex = 0;
+            
+            // Add individual apps
+            foreach (var app in _viewModel.AllApplications)
+            {
+                if (app.GroupId != null) continue; // Skip grouped apps
+                
+                var iconView = new SeroIconView
+                {
+                    AppIcon = app,
+                    IsGroup = false
+                };
+                
+                System.Diagnostics.Debug.WriteLine($"Creating SeroIconView for {app.Name}, IconImage={app.IconImage != null}");
+                
+                // Calculate position
+                var pageIndex = iconIndex / iconsPerPage;
+                var localIndex = iconIndex % iconsPerPage;
+                var row = localIndex / columnsPerPage;
+                var col = localIndex % columnsPerPage;
+                
+                var x = pageIndex * canvasWidth + col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
+                var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                
+                Canvas.SetLeft(iconView, x);
+                Canvas.SetTop(iconView, y);
+                iconView.GridPosition = new Point(col, row);
+                
+                // Hook up event handlers
+                iconView.IconClicked += OnIconClicked;
+                iconView.DragStarted += OnIconDragStarted;
+                iconView.DragMoved += OnIconDragMoved;
+                iconView.DragCompleted += OnIconDragCompleted;
+                
+                IconCanvas.Children.Add(iconView);
+                iconIndex++;
+                
+                System.Diagnostics.Debug.WriteLine($"Added icon {app.Name} at position ({x}, {y})");
+            }
+            
+            // Add groups
+            foreach (var group in _viewModel.AppGroups)
+            {
+                var iconView = new SeroIconView
+                {
+                    AppGroup = group,
+                    IsGroup = true
+                };
+                
+                // Calculate position
+                var pageIndex = iconIndex / iconsPerPage;
+                var localIndex = iconIndex % iconsPerPage;
+                var row = localIndex / columnsPerPage;
+                var col = localIndex % columnsPerPage;
+                
+                var x = pageIndex * canvasWidth + col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
+                var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                
+                Canvas.SetLeft(iconView, x);
+                Canvas.SetTop(iconView, y);
+                iconView.GridPosition = new Point(col, row);
+                
+                // Hook up event handlers
+                iconView.IconClicked += OnIconClicked;
+                iconView.DragStarted += OnIconDragStarted;
+                iconView.DragMoved += OnIconDragMoved;
+                iconView.DragCompleted += OnIconDragCompleted;
+                
+                IconCanvas.Children.Add(iconView);
+                iconIndex++;
+                
+                System.Diagnostics.Debug.WriteLine($"Added group {group.Name} at position ({x}, {y})");
+            }
+            
+            UpdatePageIndicators();
+        }
+        
+        private void UpdatePagesLayout()
+        {
+            if (_viewModel == null || IconCanvas == null) return;
+            
+            var pageWidth = IconCanvas.ActualWidth > 0 ? IconCanvas.ActualWidth : 1600;
+            var currentPageOffset = -_viewModel.CurrentPage * pageWidth;
+            
+            // Animate to the current page
+            var translateTransform = IconCanvas.RenderTransform as TranslateTransform;
+            if (translateTransform == null)
+            {
+                translateTransform = new TranslateTransform();
+                IconCanvas.RenderTransform = translateTransform;
+            }
+            
+            var animation = new DoubleAnimation
+            {
+                To = currentPageOffset,
+                Duration = TimeSpan.FromMilliseconds(300),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            
+            translateTransform.BeginAnimation(TranslateTransform.XProperty, animation);
+        }
+        
+        // Event handlers are now directly in XAML templates
         
         private void GroupIcon_RightClick(object sender, MouseButtonEventArgs e)
         {

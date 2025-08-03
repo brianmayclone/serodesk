@@ -14,6 +14,7 @@ namespace SeroDesk
         private MainViewModel _viewModel;
         private GestureRecognizer _gestureRecognizer;
         private LaunchpadWindow? _launchpadWindow;
+        private DockWindow? _dockWindow;
         
         public MainWindow()
         {
@@ -103,11 +104,13 @@ namespace SeroDesk
             // Load widgets
             _viewModel.LoadWidgets(WidgetContainer);
             
-            // Initialize SeroDock
-            SeroDock.Initialize();
+            // Create separate dock window (Always-on-Top)
+            _dockWindow = new DockWindow();
+            _dockWindow.Show();
             
             // Initialize DesktopLaunchpad (SpringBoard replacement)  
             // Note: DesktopLaunchpad gets DataContext from MainViewModel.Launchpad
+            DesktopLaunchpad.DataContext = _viewModel.Launchpad;
             
             // Create separate launchpad window (TopMost)
             _launchpadWindow = new LaunchpadWindow();
@@ -307,6 +310,19 @@ namespace SeroDesk
         private void HideControlCenter()
         {
             ControlCenter.Hide();
+        }
+        
+        protected override void OnClosed(EventArgs e)
+        {
+            // Clean up dock window
+            _dockWindow?.Close();
+            _dockWindow = null;
+            
+            // Clean up launchpad window
+            _launchpadWindow?.Close();
+            _launchpadWindow = null;
+            
+            base.OnClosed(e);
         }
     }
 }

@@ -142,6 +142,10 @@ namespace SeroDesk.ViewModels
                 // Load saved groups and organize apps
                 await LoadGroupsFromStorage();
                 UpdateDisplayItems();
+                
+                // Notify UI that all applications have been loaded
+                OnPropertyChanged(nameof(AllApplications));
+                OnPropertyChanged(nameof(AppGroups));
             }
             catch (Exception ex)
             {
@@ -244,6 +248,8 @@ namespace SeroDesk.ViewModels
             // Add ungrouped apps
             allItems.AddRange(AllApplications.Where(app => string.IsNullOrEmpty(app.GroupId)));
             
+            System.Diagnostics.Debug.WriteLine($"CreatePages: {allItems.Count} total items, {AllApplications.Count} apps, {AppGroups.Count} groups");
+            
             // Split into pages
             for (int i = 0; i < allItems.Count; i += _itemsPerPage)
             {
@@ -264,8 +270,11 @@ namespace SeroDesk.ViewModels
                 CurrentPage = 0;
             }
             
+            System.Diagnostics.Debug.WriteLine($"CreatePages: Created {Pages.Count} pages");
+            
             OnPropertyChanged(nameof(TotalPages));
             OnPropertyChanged(nameof(HasMultiplePages));
+            OnPropertyChanged(nameof(Pages));
         }
         
         private void UpdateCurrentPageItems()

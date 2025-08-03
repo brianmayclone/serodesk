@@ -4,52 +4,52 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" 
-             Height="70"
+             Height="90"
              d:DesignWidth="1920">
     
     <Grid>
         <!-- iOS/macOS Style Dock with Glassmorphism -->
-        <Grid VerticalAlignment="Bottom" Margin="0,0,0,10">
-            <!-- Dock Background -->
+        <Grid VerticalAlignment="Bottom" Margin="0,0,0,15">
+            <!-- Dock Background - Simple Glassmorphism (NO BLUR) -->
             <Border x:Name="DockBackground"
-                    Height="60"
+                    Height="70"
                     VerticalAlignment="Bottom"
                     HorizontalAlignment="Center"
-                    CornerRadius="16"
-                    MinWidth="320">
-                <!-- Multi-layer glassmorphism effect -->
+                    CornerRadius="25"
+                    MinWidth="400">
+                <!-- Multi-layer glassmorphism effect without blur on icons -->
                 <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#E6FFFFFF" Offset="0"/>
-                        <GradientStop Color="#CCFFFFFF" Offset="0.5"/>
-                        <GradientStop Color="#B3FFFFFF" Offset="1"/>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#50FFFFFF" Offset="0"/>
+                        <GradientStop Color="#30FFFFFF" Offset="0.5"/>
+                        <GradientStop Color="#40FFFFFF" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.Background>
                 
-                <!-- Subtle border -->
-                <Border CornerRadius="16"
-                        BorderThickness="0.5">
-                    <Border.BorderBrush>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#66FFFFFF" Offset="0"/>
-                            <GradientStop Color="#33FFFFFF" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Border.BorderBrush>
-                    
-                    <!-- Inner shadow for depth -->
-                    <Border CornerRadius="15"
-                            Margin="1"
-                            BorderThickness="0,1,0,0"
-                            BorderBrush="#0D000000">
+                <!-- Add subtle inner border for glass effect -->
+                <Border.BorderBrush>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#90FFFFFF" Offset="0"/>
+                        <GradientStop Color="#50FFFFFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.BorderBrush>
+                <Border.BorderThickness>1.5</Border.BorderThickness>
                 
                         <!-- Dock Items Container -->
-                        <StackPanel Orientation="Horizontal" 
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Margin="12,0">
+                        <Grid HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Margin="12,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
                     
                     <!-- Running Apps -->
-                    <ItemsControl x:Name="RunningAppsControl"
+                    <ItemsControl Grid.Column="0"
+                                x:Name="RunningAppsControl"
                                 ItemsSource="{Binding RunningApplications}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -58,7 +58,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Width="48" Height="48"
+                                <Button Width="40" Height="40"
                                         Margin="4,0"
                                         Background="Transparent"
                                         BorderThickness="0"
@@ -66,29 +66,32 @@
                                         Click="DockIcon_Click"
                                         MouseEnter="DockIcon_MouseEnter"
                                         MouseLeave="DockIcon_MouseLeave"
-                                        Tag="{Binding}">
+                                        Tag="{Binding}"
+                                        ToolTip="{Binding Title}">
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
                                             <Grid>
-                                                <!-- App Icon - No background, just the icon -->
-                                                <Image x:Name="AppIcon"
-                                                       Source="{Binding Icon, Converter={StaticResource IconToImageSourceConverter}}"
-                                                       Width="48" Height="48"
-                                                       RenderOptions.BitmapScalingMode="HighQuality"
-                                                       RenderTransformOrigin="0.5,0.5">
-                                                    <Image.RenderTransform>
-                                                        <ScaleTransform x:Name="IconScale" 
-                                                                      ScaleX="1" ScaleY="1"/>
-                                                    </Image.RenderTransform>
-                                                </Image>
+                                                <!-- App Icon with rounded corners - smaller size -->
+                                                <Border CornerRadius="8" ClipToBounds="True">
+                                                    <Image x:Name="AppIcon"
+                                                           Source="{Binding Icon, Converter={StaticResource IconToImageSourceConverter}}"
+                                                           Width="40" Height="40"
+                                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                                           RenderTransformOrigin="0.5,0.5">
+                                                        <Image.RenderTransform>
+                                                            <ScaleTransform x:Name="IconScale" 
+                                                                          ScaleX="1" ScaleY="1"/>
+                                                        </Image.RenderTransform>
+                                                    </Image>
+                                                </Border>
                                                 
                                                 <!-- Running Indicator Dot -->
                                                 <Ellipse x:Name="RunningDot"
-                                                        Width="4" Height="4"
+                                                        Width="3" Height="3"
                                                         Fill="#333333"
                                                         VerticalAlignment="Bottom"
                                                         HorizontalAlignment="Center"
-                                                        Margin="0,0,0,-6"
+                                                        Margin="0,0,0,-5"
                                                         Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                             </Grid>
                                             
@@ -100,14 +103,14 @@
                                                             <Storyboard>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale"
                                                                                Storyboard.TargetProperty="ScaleX"
-                                                                               To="1.15" Duration="0:0:0.15">
+                                                                               To="1.1" Duration="0:0:0.12">
                                                                     <DoubleAnimation.EasingFunction>
                                                                         <CubicEase EasingMode="EaseOut"/>
                                                                     </DoubleAnimation.EasingFunction>
                                                                 </DoubleAnimation>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale"
                                                                                Storyboard.TargetProperty="ScaleY"
-                                                                               To="1.15" Duration="0:0:0.15">
+                                                                               To="1.1" Duration="0:0:0.12">
                                                                     <DoubleAnimation.EasingFunction>
                                                                         <CubicEase EasingMode="EaseOut"/>
                                                                     </DoubleAnimation.EasingFunction>
@@ -120,14 +123,14 @@
                                                             <Storyboard>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale"
                                                                                Storyboard.TargetProperty="ScaleX"
-                                                                               To="1.0" Duration="0:0:0.15">
+                                                                               To="1.0" Duration="0:0:0.12">
                                                                     <DoubleAnimation.EasingFunction>
                                                                         <CubicEase EasingMode="EaseOut"/>
                                                                     </DoubleAnimation.EasingFunction>
                                                                 </DoubleAnimation>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale"
                                                                                Storyboard.TargetProperty="ScaleY"
-                                                                               To="1.0" Duration="0:0:0.15">
+                                                                               To="1.0" Duration="0:0:0.12">
                                                                     <DoubleAnimation.EasingFunction>
                                                                         <CubicEase EasingMode="EaseOut"/>
                                                                     </DoubleAnimation.EasingFunction>
@@ -144,60 +147,142 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     
-                            <!-- Dock Separator -->
-                            <Rectangle Width="1" Height="32"
-                                      Fill="#33000000"
-                                      Margin="8,0"
-                                      VerticalAlignment="Center"/>
+                    <!-- Separator after running apps -->
+                    <Rectangle Grid.Column="1" 
+                              Width="1" Height="28"
+                              Fill="#33000000"
+                              Margin="6,0"
+                              VerticalAlignment="Center"/>
                     
-                    <!-- Pinned Apps (Finder, Launchpad, etc.) -->
-                    <StackPanel Orientation="Horizontal">
-                        
-                                <!-- Finder (File Explorer) -->
-                                <Button Width="48" Height="48"
-                                        Margin="4,0"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Style="{StaticResource DockIconStyle}"
-                                Click="FinderIcon_Click"
-                                ToolTip="Finder">
-                                    <!-- Windows Explorer Icon -->
-                                    <Grid>
-                                        <Border Background="#0078D4" CornerRadius="10" Width="48" Height="48">
-                                            <Path Data="M8,6 L16,6 L20,10 L32,10 C33,10 34,11 34,12 L34,28 C34,29 33,30 32,30 L8,30 C7,30 6,29 6,28 L6,8 C6,7 7,6 8,6 Z"
-                                                  Fill="White"
-                                                  Stretch="Uniform"
-                                                  Width="28" Height="28"/>
-                                        </Border>
-                                    </Grid>
-                        </Button>
-                        
-                        
-                                <!-- Recycle Bin -->
-                                <Button Width="48" Height="48"
-                                        Margin="4,0"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Style="{StaticResource DockIconStyle}"
-                                Click="TrashIcon_Click"
-                                ToolTip="Trash">
-                                    <!-- Recycle Bin Icon -->
-                                    <Grid>
-                                        <Border Background="#666666" CornerRadius="10" Width="48" Height="48">
-                                            <Path Data="M7,4 L10,4 L10,3 C10,2.4 10.4,2 11,2 L13,2 C13.6,2 14,2.4 14,3 L14,4 L17,4 C17.6,4 18,4.4 18,5 L18,6 L6,6 L6,5 C6,4.4 6.4,4 7,4 Z M8,8 L8,18 C8,19.1 8.9,20 10,20 L14,20 C15.1,20 16,19.1 16,18 L16,8 L8,8 Z M10,10 L10,16 M12,10 L12,16 M14,10 L14,16"
-                                                  Stroke="White"
-                                                  StrokeThickness="1.2"
-                                                  Fill="Transparent"
-                                                  Stretch="Uniform"
-                                                  Width="26" Height="26"/>
-                                        </Border>
-                                    </Grid>
-                        </Button>
-                        
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </Border>
+                    <!-- Finder (File Explorer) - System Icon -->
+                    <Button Grid.Column="2"
+                            Width="40" Height="40"
+                            Margin="4,0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Style="{StaticResource DockIconStyle}"
+                            Click="FinderIcon_Click"
+                            ToolTip="File Explorer">
+                        <Border CornerRadius="8" ClipToBounds="True">
+                            <Image x:Name="ExplorerIcon"
+                                   Width="40" Height="40"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   RenderTransformOrigin="0.5,0.5">
+                                <Image.RenderTransform>
+                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                </Image.RenderTransform>
+                            </Image>
+                        </Border>
+                        <Button.Triggers>
+                            <EventTrigger RoutedEvent="MouseEnter">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ExplorerIcon"
+                                                       Storyboard.TargetProperty="RenderTransform.ScaleX"
+                                                       To="1.1" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="ExplorerIcon"
+                                                       Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                                       To="1.1" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ExplorerIcon"
+                                                       Storyboard.TargetProperty="RenderTransform.ScaleX"
+                                                       To="1.0" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="ExplorerIcon"
+                                                       Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                                       To="1.0" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Button.Triggers>
+                    </Button>
+                    
+                    <!-- Spacer -->
+                    <Border Grid.Column="3" Width="10"/>
+                    
+                    <!-- Recycle Bin (Always on the right) - System Icon -->
+                    <Button Grid.Column="4"
+                            Width="40" Height="40"
+                            Margin="4,0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Style="{StaticResource DockIconStyle}"
+                            Click="TrashIcon_Click"
+                            ToolTip="Recycle Bin">
+                        <Border CornerRadius="8" ClipToBounds="True">
+                            <Image x:Name="RecycleBinIcon"
+                                   Width="40" Height="40"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   RenderTransformOrigin="0.5,0.5">
+                                <Image.RenderTransform>
+                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                </Image.RenderTransform>
+                            </Image>
+                        </Border>
+                        <Button.Triggers>
+                            <EventTrigger RoutedEvent="MouseEnter">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="RecycleBinIcon"
+                                                       Storyboard.TargetProperty="RenderTransform.ScaleX"
+                                                       To="1.1" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="RecycleBinIcon"
+                                                       Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                                       To="1.1" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="RecycleBinIcon"
+                                                       Storyboard.TargetProperty="RenderTransform.ScaleX"
+                                                       To="1.0" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="RecycleBinIcon"
+                                                       Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                                       To="1.0" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Button.Triggers>
+                    </Button>
+                        </Grid>
             </Border>
             
             <!-- Dock Shadow for depth -->

@@ -18,6 +18,7 @@ namespace SeroDesk.Views
             Loaded += (s, e) =>
             {
                 _viewModel = DataContext as DockViewModel;
+                LoadSystemIcons();
             };
         }
         
@@ -27,7 +28,92 @@ namespace SeroDesk.Views
             DataContext = _viewModel;
             
             _viewModel.StartMonitoringWindows();
+            
+            // Load system icons with delay to ensure UI is fully loaded
+            this.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                LoadSystemIcons();
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+            
             AnimateIn();
+        }
+        
+        private void LoadSystemIcons()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("LoadSystemIcons: Starting to load system icons");
+                
+                // Load Explorer icon - Try multiple approaches
+                var explorerImage = this.FindName("ExplorerIcon") as System.Windows.Controls.Image;
+                if (explorerImage != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("ExplorerIcon image found");
+                    
+                    // Try Computer icon first
+                    var explorerIconSource = IconExtractor.GetSystemIcon(Platform.SystemIconType.Computer);
+                    if (explorerIconSource != null)
+                    {
+                        explorerImage.Source = explorerIconSource;
+                        System.Diagnostics.Debug.WriteLine("Explorer icon loaded from Computer");
+                    }
+                    else
+                    {
+                        // Fallback: Try loading directly from explorer.exe
+                        explorerIconSource = IconExtractor.GetIconForFile(@"C:\Windows\explorer.exe", true);
+                        if (explorerIconSource != null)
+                        {
+                            explorerImage.Source = explorerIconSource;
+                            System.Diagnostics.Debug.WriteLine("Explorer icon loaded from explorer.exe");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("Failed to load Explorer icon");
+                        }
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("ExplorerIcon image not found in XAML");
+                }
+                
+                // Load Recycle Bin icon
+                var recycleBinImage = this.FindName("RecycleBinIcon") as System.Windows.Controls.Image;
+                if (recycleBinImage != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("RecycleBinIcon image found");
+                    
+                    var recycleBinIconSource = IconExtractor.GetSystemIcon(Platform.SystemIconType.RecycleBin);
+                    if (recycleBinIconSource != null)
+                    {
+                        recycleBinImage.Source = recycleBinIconSource;
+                        System.Diagnostics.Debug.WriteLine("Recycle Bin icon loaded");
+                    }
+                    else
+                    {
+                        // Fallback: Try loading from shell32.dll
+                        recycleBinIconSource = IconExtractor.GetIconForFile(@"C:\Windows\System32\shell32.dll", true);
+                        if (recycleBinIconSource != null)
+                        {
+                            recycleBinImage.Source = recycleBinIconSource;
+                            System.Diagnostics.Debug.WriteLine("Recycle Bin icon loaded from shell32.dll");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("Failed to load Recycle Bin icon");
+                        }
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("RecycleBinIcon image not found in XAML");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Exception in LoadSystemIcons: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
         }
         
         private void AnimateIn()
