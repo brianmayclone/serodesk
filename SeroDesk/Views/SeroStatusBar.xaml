@@ -1,0 +1,126 @@
+<UserControl x:Class="SeroDesk.Views.SeroStatusBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             Height="32" 
+             d:DesignWidth="1920">
+    
+    <!-- iOS-Style Status Bar -->
+    <Border Background="#20000000" 
+            BorderThickness="0">
+        <Grid Margin="16,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Left Side: Network and Signal -->
+            <StackPanel Grid.Column="0"
+                       Orientation="Horizontal"
+                       VerticalAlignment="Center">
+                
+                <!-- Signal Strength Dots -->
+                <StackPanel Orientation="Horizontal" 
+                           Margin="0,0,8,0">
+                    <Ellipse Width="4" Height="4" 
+                            Fill="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=1}"
+                            Margin="0,0,2,0"/>
+                    <Ellipse Width="4" Height="4" 
+                            Fill="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=2}"
+                            Margin="0,0,2,0"/>
+                    <Ellipse Width="4" Height="4" 
+                            Fill="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=3}"
+                            Margin="0,0,2,0"/>
+                    <Ellipse Width="4" Height="4" 
+                            Fill="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=4}"/>
+                </StackPanel>
+                
+                <!-- Network Type -->
+                <TextBlock Text="{Binding NetworkStatus}"
+                          Foreground="White"
+                          FontSize="12"
+                          FontWeight="Medium"
+                          VerticalAlignment="Center"/>
+            </StackPanel>
+            
+            <!-- Center: Time -->
+            <TextBlock Grid.Column="1"
+                      Text="{Binding CurrentTime}"
+                      Foreground="White"
+                      FontSize="14"
+                      FontWeight="Bold"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"/>
+            
+            <!-- Right Side: Battery and Debug -->
+            <StackPanel Grid.Column="2"
+                       Orientation="Horizontal"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center">
+                
+                <!-- Debug Exit Button (only in Debug mode) -->
+                <Border Background="#FF5722"
+                        CornerRadius="3"
+                        Width="28" Height="16"
+                        Margin="0,0,10,0">
+                    <Button x:Name="DebugExitButton"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            Click="DebugExitButton_Click"
+                            ToolTip="Exit SeroDesk (Restart Explorer)">
+                        <TextBlock Text="EXIT" 
+                                   Foreground="White" 
+                                   FontSize="8" 
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+                </Border>
+                
+                <!-- Battery Percentage -->
+                <TextBlock Text="{Binding BatteryPercentage, StringFormat={}{0}%}"
+                          Foreground="White"
+                          FontSize="12"
+                          FontWeight="Medium"
+                          VerticalAlignment="Center"
+                          Margin="0,0,6,0"/>
+                
+                <!-- Battery Icon -->
+                <Grid Width="20" Height="10" VerticalAlignment="Center">
+                    <!-- Battery Outline -->
+                    <Border Background="Transparent"
+                           BorderBrush="White"
+                           BorderThickness="1"
+                           CornerRadius="1"
+                           Width="16" Height="8"/>
+                    
+                    <!-- Battery Tip -->
+                    <Border Background="White"
+                           Width="1" Height="4"
+                           HorizontalAlignment="Right"
+                           Margin="0,0,-1,0"
+                           CornerRadius="0,1,1,0"/>
+                    
+                    <!-- Battery Fill -->
+                    <Border Background="{Binding BatteryPercentage, Converter={StaticResource BatteryToBrushConverter}}"
+                           Width="{Binding BatteryPercentage, Converter={StaticResource BatteryToWidthConverter}}"
+                           Height="6"
+                           HorizontalAlignment="Left"
+                           Margin="1,0,0,0"
+                           CornerRadius="1"/>
+                    
+                    <!-- Charging Indicator -->
+                    <Path Data="M8,2 L6,6 L8,6 L6,10 L10,6 L8,6 L10,2 Z"
+                          Fill="White"
+                          Stretch="Uniform"
+                          Width="6" Height="6"
+                          Visibility="{Binding IsCharging, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

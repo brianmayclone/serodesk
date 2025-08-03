@@ -1,0 +1,83 @@
+<Window x:Class="SeroDesk.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:SeroDesk.Views"
+        mc:Ignorable="d"
+        Title="SeroDesk"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="Black"
+        WindowState="Maximized"
+        ShowInTaskbar="False"
+        Topmost="False"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    
+    <Grid x:Name="MainGrid">
+        <!-- Desktop Background Layer -->
+        <Grid x:Name="DesktopLayer">
+            <!-- Wallpaper Background -->
+            <Image x:Name="WallpaperImage" 
+                   Stretch="UniformToFill"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+            
+            <!-- Semi-transparent overlay for better icon visibility -->
+            <Rectangle Fill="Black" Opacity="0.2"/>
+            
+            <!-- Widget Layer (Behind Icons) -->
+            <Canvas x:Name="WidgetContainer" 
+                    IsHitTestVisible="True"
+                    Panel.ZIndex="0"/>
+            
+            <!-- Launchpad as Desktop (iOS SpringBoard Style) -->
+            <views:SeroLaunchpad x:Name="DesktopLaunchpad" 
+                                Visibility="Visible"
+                                Panel.ZIndex="1"
+                                DataContext="{Binding Launchpad}"/>
+        </Grid>
+        
+        <!-- SeroLaunchpad moved to separate TopMost window -->
+        
+        <!-- iOS-Style Status Bar (Top) -->
+        <views:SeroStatusBar x:Name="StatusBar"
+                            VerticalAlignment="Top"
+                            Panel.ZIndex="200"
+                            IsHitTestVisible="True"/>
+        
+        <!-- SeroDock (Bottom Dock) -->
+        <views:SeroDock x:Name="SeroDock" 
+                       VerticalAlignment="Bottom"
+                       Panel.ZIndex="100"
+                       IsHitTestVisible="True"/>
+        
+        <!-- Touch Gesture Overlay -->
+        <Canvas x:Name="GestureOverlay" 
+                Background="Transparent"
+                IsHitTestVisible="False"
+                Panel.ZIndex="1"
+                ManipulationStarting="GestureOverlay_ManipulationStarting"
+                ManipulationDelta="GestureOverlay_ManipulationDelta"
+                ManipulationCompleted="GestureOverlay_ManipulationCompleted"/>
+        
+        <!-- iOS Notification Center (Left Side) -->
+        <views:SeroNotificationCenter x:Name="NotificationCenter"
+                                     Panel.ZIndex="300"
+                                     Width="480"
+                                     HorizontalAlignment="Left"/>
+        
+        <!-- iOS Control Center (Right Side) -->
+        <views:SeroControlCenter x:Name="ControlCenter"
+                                Panel.ZIndex="300"
+                                Width="480"
+                                HorizontalAlignment="Right"/>
+        
+        <!-- Notification Layer -->
+        <Grid x:Name="NotificationLayer" 
+              IsHitTestVisible="False"
+              VerticalAlignment="Top"
+              HorizontalAlignment="Right"
+              Margin="20"/>
+    </Grid>
+</Window>

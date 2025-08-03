@@ -1,0 +1,41 @@
+<Application x:Class="SeroDesk.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SeroDesk.Core"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles/SeroStyles.xaml"/>
+                <ResourceDictionary Source="Styles/ModernStyles.xaml"/>
+                <ResourceDictionary Source="Styles/Animations.xaml"/>
+                <ResourceDictionary Source="Styles/TouchOptimized.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Converters -->
+            <local:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <local:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+            <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+            <local:SignalToBrushConverter x:Key="SignalToBrushConverter"/>
+            <local:BatteryToBrushConverter x:Key="BatteryToBrushConverter"/>
+            <local:BatteryToWidthConverter x:Key="BatteryToWidthConverter"/>
+            <local:IconToImageSourceConverter x:Key="IconToImageSourceConverter"/>
+            <local:SliderValueToWidthConverter x:Key="SliderValueToWidthConverter"/>
+            
+            <!-- Global Application Settings -->
+            <Duration x:Key="AnimationDuration">0:0:0.3</Duration>
+            <Duration x:Key="FastAnimationDuration">0:0:0.15</Duration>
+            
+            <!-- Touch Target Sizes (iOS Standard: 44x44 points) -->
+            <GridLength x:Key="TouchTargetSize">44</GridLength>
+            <Thickness x:Key="TouchTargetPadding">11</Thickness>
+            
+            <!-- Colors -->
+            <SolidColorBrush x:Key="AccentBrush" Color="#007AFF"/>
+            <SolidColorBrush x:Key="BackgroundBrush" Color="#1E1E1E"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#2D2D30"/>
+            <SolidColorBrush x:Key="ForegroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="SubtleBrush" Color="#808080"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
