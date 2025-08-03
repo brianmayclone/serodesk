@@ -8,14 +8,24 @@ namespace SeroDesk.Platform
     public class GlobalKeyboardHook : IDisposable
     {
         private IntPtr _hookID = IntPtr.Zero;
-        private NativeMethods.LowLevelKeyboardProc _proc = HookCallback;
+        private NativeMethods.LowLevelKeyboardProc _proc; // Keep strong reference to prevent GC
         private bool _disposed = false;
+        private static GlobalKeyboardHook? _instance;
         
         public event EventHandler? WindowsKeyPressed;
         
         public GlobalKeyboardHook()
         {
+            _instance = this;
+            _proc = HookCallback; // Assign to instance field to prevent GC
             _hookID = SetHook(_proc);
+            
+            // Check if hook was installed successfully
+            if (_hookID == IntPtr.Zero)
+            {
+                var error = Marshal.GetLastWin32Error();
+                System.Diagnostics.Debug.WriteLine($"Failed to install keyboard hook. Win32 Error: {error}");
+            }
         }
         
         private static IntPtr SetHook(NativeMethods.LowLevelKeyboardProc proc)
@@ -46,9 +56,8 @@ namespace SeroDesk.Platform
                     // Check for Windows key press
                     if (hookStruct.vkCode == NativeMethods.VK_LWIN || hookStruct.vkCode == NativeMethods.VK_RWIN)
                     {
-                        // Get the instance and trigger the event
-                        var instance = App.Current?.FindResource("GlobalKeyboardHook") as GlobalKeyboardHook;
-                        instance?.OnWindowsKeyPressed();
+                        // Trigger the event on the current instance
+                        _instance?.OnWindowsKeyPressed();
                         
                         // Suppress the Windows key to prevent Start Menu from opening
                         return (IntPtr)1;
@@ -79,6 +88,7 @@ namespace SeroDesk.Platform
                     NativeMethods.UnhookWindowsHookEx(_hookID);
                     _hookID = IntPtr.Zero;
                 }
+                _instance = null;
                 _disposed = true;
             }
         }

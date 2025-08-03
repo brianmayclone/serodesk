@@ -233,6 +233,19 @@ namespace SeroDesk.Views
             _hideTimer.Start();
         }
         
+        /// <summary>
+        /// Public method to show the dock (used by global Windows key hook)
+        /// </summary>
+        public void ShowDockForced()
+        {
+            ShowDock();
+        }
+        
+        /// <summary>
+        /// Public method to check if dock is currently visible
+        /// </summary>
+        public bool IsDockVisible => _isVisible;
+        
         protected override void OnClosed(EventArgs e)
         {
             _mouseTrackingTimer?.Stop();

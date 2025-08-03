@@ -439,5 +439,31 @@ namespace SeroDesk.Views
             
             DockIndicator.Visibility = Visibility.Collapsed;
         }
+        
+        /// <summary>
+        /// Public method to trigger the home button action (used by global Windows key hook)
+        /// </summary>
+        public void TriggerHomeButtonAction()
+        {
+            try
+            {
+                if (_isDesktopMode)
+                {
+                    // Restore previously minimized windows
+                    RestoreMinimizedWindows();
+                    _isDesktopMode = false;
+                }
+                else
+                {
+                    // Show Desktop functionality - minimize all windows
+                    MinimizeAllWindows();
+                    _isDesktopMode = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to toggle desktop mode via Windows key: {ex.Message}");
+            }
+        }
     }
 }

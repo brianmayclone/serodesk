@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using SeroDesk.Services;
 using SeroDesk.Platform;
@@ -122,6 +123,9 @@ namespace SeroDesk
             
             // Create and show the separate status bar window that overlays all applications
             CreateStatusBarWindow();
+            
+            // Initialize global keyboard hook for Windows key functionality
+            InitializeGlobalKeyboardHook();
         }
         
         /// <summary>
@@ -176,6 +180,112 @@ namespace SeroDesk
         }
         
         /// <summary>
+        /// Initializes the global keyboard hook for Windows key functionality
+        /// </summary>
+        private void InitializeGlobalKeyboardHook()
+        {
+            try
+            {
+                _globalKeyboardHook = new GlobalKeyboardHook();
+                _globalKeyboardHook.WindowsKeyPressed += OnWindowsKeyPressed;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize global keyboard hook: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Checks if the application is running with administrator privileges
+        /// </summary>
+        private static bool IsRunningAsAdministrator()
+        {
+            try
+            {
+                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                var principal = new System.Security.Principal.WindowsPrincipal(identity);
+                return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Handles Windows key press events to toggle between desktop and windows
+        /// </summary>
+        private void OnWindowsKeyPressed(object? sender, EventArgs e)
+        {
+            try
+            {
+                // Find the DockWindow instead of the main window
+                var dockWindow = FindDockWindow();
+                if (dockWindow != null)
+                {
+                    // Show dock if it's hidden
+                    if (!dockWindow.IsDockVisible)
+                    {
+                        dockWindow.ShowDockForced();
+                    }
+                    
+                    // Get the SeroDock control from the DockWindow
+                    var seroDock = dockWindow.FindName("Dock") as Views.SeroDock;
+                    if (seroDock != null)
+                    {
+                        // Trigger the same functionality as the Home button
+                        seroDock.TriggerHomeButtonAction();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error handling Windows key press: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Finds the DockWindow among all application windows
+        /// </summary>
+        private Views.DockWindow? FindDockWindow()
+        {
+            foreach (Window window in Windows)
+            {
+                if (window is Views.DockWindow dockWindow)
+                {
+                    return dockWindow;
+                }
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// Finds the SeroDock control in the visual tree
+        /// </summary>
+        private Views.SeroDock? FindSeroDockControl(Window window)
+        {
+            return FindVisualChild<Views.SeroDock>(window);
+        }
+        
+        /// <summary>
+        /// Finds a child control of a specific type in the visual tree
+        /// </summary>
+        private T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T result)
+                    return result;
+                
+                var childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null)
+                    return childOfChild;
+            }
+            return null;
+        }
+        
+        /// <summary>
         /// Handles application shutdown and cleanup operations when SeroDesk exits.
         /// This method ensures graceful restoration of the Windows desktop environment
         /// and proper cleanup of all resources and services.
@@ -195,6 +305,10 @@ namespace SeroDesk
         {
             // Stop taskbar monitoring
             StopTaskbarMonitoring();
+            
+            // Clean up global keyboard hook
+            _globalKeyboardHook?.Dispose();
+            _globalKeyboardHook = null;
             
             // Restore the Windows taskbar before exiting
             // This ensures the user has a working taskbar when SeroDesk closes

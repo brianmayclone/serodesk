@@ -96,7 +96,7 @@ namespace SeroDesk.Views
             }
             
             // Ensure pages are created after layout is updated
-            this.Dispatcher.BeginInvoke(new Action(() =>
+            _ = this.Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (_viewModel != null)
                 {

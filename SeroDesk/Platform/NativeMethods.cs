@@ -14,6 +14,9 @@ namespace SeroDesk.Platform
         public static extern bool IsWindowVisible(IntPtr hWnd);
         
         [DllImport("user32.dll")]
+        public static extern bool IsWindow(IntPtr hWnd);
+        
+        [DllImport("user32.dll")]
         public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
         
         [DllImport("user32.dll")]
@@ -180,6 +183,11 @@ namespace SeroDesk.Platform
         public const int WS_EX_TRANSPARENT = 0x20;
         public const int WS_EX_TOOLWINDOW = 0x80;
         public const int WS_MINIMIZE = 0x20000000;
+        public const int WS_MAXIMIZE = 0x01000000;
+        
+        // ShowWindow commands for maximized state
+        public const int SW_MAXIMIZE = 3;
+        public const int SW_SHOWMAXIMIZED = 3;
         
         // Shell file info flags
         public const uint SHGFI_ICON = 0x100;
@@ -199,7 +207,7 @@ namespace SeroDesk.Platform
         public const uint MOD_WIN = 0x0008;
         
         #endregion
-    }
+    
     
     #region Structures
     

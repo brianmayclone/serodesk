@@ -25,16 +25,11 @@ namespace SeroDesk.Views
             this.MouseLeftButtonUp += OnMouseLeftButtonUp;
             this.MouseLeave += OnMouseLeave;
             
-            // Enable touch and manipulation
+            // Enable manipulation for touch support (replaces touch events to avoid conflicts)
             this.IsManipulationEnabled = true;
             this.ManipulationStarting += OnManipulationStarting;
             this.ManipulationDelta += OnManipulationDelta;
             this.ManipulationCompleted += OnManipulationCompleted;
-            
-            // Enable touch events
-            this.TouchDown += OnTouchDown;
-            this.TouchMove += OnTouchMove;
-            this.TouchUp += OnTouchUp;
         }
         
         // Dependency Properties
@@ -222,99 +217,7 @@ namespace SeroDesk.Views
         }
         
         // Touch Event Handlers
-        private void OnTouchDown(object? sender, TouchEventArgs e)
-        {
-            _dragStartPoint = e.GetTouchPoint(this).Position;
-            _hasMovedDuringTouch = false; // Reset movement flag
-            _isDragging = false; // Reset dragging flag
-            this.CaptureTouch(e.TouchDevice);
-            e.Handled = true;
-        }
-        
-        private void OnTouchMove(object? sender, TouchEventArgs e)
-        {
-            if (this.AreAnyTouchesCaptured)
-            {
-                Point currentPosition = e.GetTouchPoint(this).Position;
-                Vector diff = currentPosition - _dragStartPoint;
-                
-                // Mark that we've moved during touch (even small movements)
-                if (Math.Abs(diff.X) > 3 || Math.Abs(diff.Y) > 3)
-                {
-                    _hasMovedDuringTouch = true;
-                }
-                
-                if (!_isDragging && (Math.Abs(diff.X) > 10 || Math.Abs(diff.Y) > 10)) // Larger threshold for touch
-                {
-                    // Start dragging
-                    _isDragging = true;
-                    StartDragVisual();
-                    
-                    var dragEventArgs = new IconDragEventArgs
-                    {
-                        IconView = this,
-                        Position = e.GetTouchPoint(this.Parent as UIElement).Position,
-                        AppIcon = this.AppIcon,
-                        AppGroup = this.AppGroup,
-                        IsGroup = this.IsGroup
-                    };
-                    DragStarted?.Invoke(this, dragEventArgs);
-                }
-                
-                if (_isDragging)
-                {
-                    // Continue dragging
-                    var dragEventArgs = new IconDragEventArgs
-                    {
-                        IconView = this,
-                        Position = e.GetTouchPoint(this.Parent as UIElement).Position,
-                        AppIcon = this.AppIcon,
-                        AppGroup = this.AppGroup,
-                        IsGroup = this.IsGroup
-                    };
-                    DragMoved?.Invoke(this, dragEventArgs);
-                }
-            }
-        }
-        
-        private void OnTouchUp(object? sender, TouchEventArgs e)
-        {
-            if (this.AreAnyTouchesCaptured)
-            {
-                this.ReleaseTouchCapture(e.TouchDevice);
-                
-                if (_isDragging)
-                {
-                    // End dragging
-                    EndDragVisual();
-                    
-                    var dragEventArgs = new IconDragEventArgs
-                    {
-                        IconView = this,
-                        Position = e.GetTouchPoint(this.Parent as UIElement).Position,
-                        AppIcon = this.AppIcon,
-                        AppGroup = this.AppGroup,
-                        IsGroup = this.IsGroup
-                    };
-                    DragCompleted?.Invoke(this, dragEventArgs);
-                    
-                    _isDragging = false;
-                }
-                else if (!_hasMovedDuringTouch)
-                {
-                    // Only trigger click if there was NO movement during touch
-                    // This prevents accidental app launches after drag operations
-                    OnIconClicked();
-                }
-                
-                // Reset movement flag for next touch sequence
-                _hasMovedDuringTouch = false;
-                
-                e.Handled = true;
-            }
-        }
-        
-        // Manipulation Event Handlers (for advanced touch gestures)
+        // Manipulation Event Handlers (for touch gestures)
         private void OnManipulationStarting(object? sender, ManipulationStartingEventArgs e)
         {
             e.ManipulationContainer = this.Parent as UIElement;
@@ -328,12 +231,20 @@ namespace SeroDesk.Views
             {
                 // Start dragging with manipulation
                 _isDragging = true;
+                _hasMovedDuringTouch = true;
                 StartDragVisual();
+                
+                // Use the actual manipulation position relative to parent
+                var parentElement = this.Parent as UIElement;
+                var containerElement = e.ManipulationContainer as UIElement;
+                Point positionInParent = containerElement != null && parentElement != null ? 
+                    containerElement.TranslatePoint(e.ManipulationOrigin, parentElement) : 
+                    e.ManipulationOrigin;
                 
                 var dragEventArgs = new IconDragEventArgs
                 {
                     IconView = this,
-                    Position = e.ManipulationOrigin,
+                    Position = positionInParent,
                     AppIcon = this.AppIcon,
                     AppGroup = this.AppGroup,
                     IsGroup = this.IsGroup
@@ -343,11 +254,23 @@ namespace SeroDesk.Views
             
             if (_isDragging)
             {
-                // Update position during manipulation
+                // Update position during manipulation - calculate current position from origin + translation
+                var parentElement = this.Parent as UIElement;
+                var containerElement = e.ManipulationContainer as UIElement;
+                Point currentPosition = new Point(
+                    e.ManipulationOrigin.X + e.CumulativeManipulation.Translation.X,
+                    e.ManipulationOrigin.Y + e.CumulativeManipulation.Translation.Y
+                );
+                
+                // If manipulation container is different from parent, transform coordinates
+                Point positionInParent = containerElement != null && parentElement != null && containerElement != parentElement ? 
+                    containerElement.TranslatePoint(currentPosition, parentElement) : 
+                    currentPosition;
+                
                 var dragEventArgs = new IconDragEventArgs
                 {
                     IconView = this,
-                    Position = e.ManipulationOrigin,
+                    Position = positionInParent,
                     AppIcon = this.AppIcon,
                     AppGroup = this.AppGroup,
                     IsGroup = this.IsGroup
@@ -362,13 +285,24 @@ namespace SeroDesk.Views
         {
             if (_isDragging)
             {
-                // End dragging
+                // End dragging - calculate final position from origin + translation
+                var parentElement = this.Parent as UIElement;
+                var containerElement = e.ManipulationContainer as UIElement;
+                Point finalPosition = new Point(
+                    e.ManipulationOrigin.X + e.TotalManipulation.Translation.X,
+                    e.ManipulationOrigin.Y + e.TotalManipulation.Translation.Y
+                );
+                
+                Point positionInParent = containerElement != null && parentElement != null && containerElement != parentElement ? 
+                    containerElement.TranslatePoint(finalPosition, parentElement) : 
+                    finalPosition;
+                
                 EndDragVisual();
                 
                 var dragEventArgs = new IconDragEventArgs
                 {
                     IconView = this,
-                    Position = e.ManipulationOrigin,
+                    Position = positionInParent,
                     AppIcon = this.AppIcon,
                     AppGroup = this.AppGroup,
                     IsGroup = this.IsGroup
@@ -377,6 +311,14 @@ namespace SeroDesk.Views
                 
                 _isDragging = false;
             }
+            else if (!_hasMovedDuringTouch)
+            {
+                // Only trigger click if there was NO movement during touch
+                OnIconClicked();
+            }
+            
+            // Reset movement flag for next touch sequence
+            _hasMovedDuringTouch = false;
             
             e.Handled = true;
         }

@@ -27,9 +27,10 @@ namespace SeroDesk.Views
         private struct WindowInfo
         {
             public int X, Y, Width, Height;
-            public WindowInfo(int x, int y, int width, int height)
+            public bool WasMaximized;
+            public WindowInfo(int x, int y, int width, int height, bool wasMaximized = false)
             {
-                X = x; Y = y; Width = width; Height = height;
+                X = x; Y = y; Width = width; Height = height; WasMaximized = wasMaximized;
             }
         }
         
@@ -66,11 +67,25 @@ namespace SeroDesk.Views
                 // StatusBar.RightSideClicked += (s, args) => ShowControlCenter();
             }
             
+            // Check initial state before showing
+            var isDesktopActive = IsDesktopOrLaunchpadActive();
+            _isOnDesktop = isDesktopActive;
+            
+            if (isDesktopActive)
+            {
+                // Start visible if desktop is active
+                ShowStatusBar();
+                SetStatusBarBackground(true); // Transparent for desktop
+            }
+            else
+            {
+                // Start hidden if other applications are in foreground
+                _isVisible = false;
+                this.Visibility = Visibility.Hidden;
+            }
+            
             // Start mouse tracking
             _mouseTrackingTimer.Start();
-            
-            // Initially show the status bar
-            ShowStatusBar();
         }
         
         private void PositionStatusBarAtTop()
@@ -359,20 +374,49 @@ namespace SeroDesk.Views
                                 // Check if window overlaps with status bar area (top 32 pixels)
                                 if (rect.Top < STATUS_BAR_HEIGHT && rect.Bottom > 0)
                                 {
-                                    // Store original position/size
+                                    bool isMaximized = IsMaximizedWindow(hWnd);
+                                    
+                                    // Store original position/size and maximized state
                                     _resizedWindows[hWnd] = new WindowInfo(rect.Left, rect.Top, 
-                                        rect.Right - rect.Left, rect.Bottom - rect.Top);
+                                        rect.Right - rect.Left, rect.Bottom - rect.Top, isMaximized);
                                     
-                                    // Calculate new position (move down by status bar height)
-                                    var newY = Math.Max(STATUS_BAR_HEIGHT, rect.Top);
-                                    var newHeight = (rect.Bottom - rect.Top) - (newY - rect.Top);
-                                    
-                                    // Only resize if the window would still have reasonable height
-                                    if (newHeight > 100)
+                                    if (isMaximized)
                                     {
-                                        NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
-                                            rect.Left, newY, rect.Right - rect.Left, newHeight,
-                                            NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                                        // For maximized windows, first restore them, then resize
+                                        NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+                                        
+                                        // Wait a brief moment for the restore to take effect
+                                        System.Threading.Thread.Sleep(50);
+                                        
+                                        // Get the new window rect after restore
+                                        if (NativeMethods.GetWindowRect(hWnd, out var restoredRect))
+                                        {
+                                            // Calculate new position avoiding the status bar
+                                            var newY = Math.Max(STATUS_BAR_HEIGHT, restoredRect.Top);
+                                            var newHeight = (restoredRect.Bottom - restoredRect.Top) - (newY - restoredRect.Top);
+                                            
+                                            // Only resize if the window would still have reasonable height
+                                            if (newHeight > 100)
+                                            {
+                                                NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
+                                                    restoredRect.Left, newY, restoredRect.Right - restoredRect.Left, newHeight,
+                                                    NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // For regular windows, just move them down
+                                        var newY = Math.Max(STATUS_BAR_HEIGHT, rect.Top);
+                                        var newHeight = (rect.Bottom - rect.Top) - (newY - rect.Top);
+                                        
+                                        // Only resize if the window would still have reasonable height
+                                        if (newHeight > 100)
+                                        {
+                                            NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
+                                                rect.Left, newY, rect.Right - rect.Left, newHeight,
+                                                NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                                        }
                                     }
                                 }
                             }
@@ -396,9 +440,18 @@ namespace SeroDesk.Views
                     // Check if window still exists
                     if (NativeMethods.IsWindowVisible(hWnd))
                     {
-                        NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
-                            originalInfo.X, originalInfo.Y, originalInfo.Width, originalInfo.Height,
-                            NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                        if (originalInfo.WasMaximized)
+                        {
+                            // For previously maximized windows, restore to maximized state
+                            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_MAXIMIZE);
+                        }
+                        else
+                        {
+                            // For regular windows, restore original position and size
+                            NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
+                                originalInfo.X, originalInfo.Y, originalInfo.Width, originalInfo.Height,
+                                NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -430,6 +483,20 @@ namespace SeroDesk.Views
                 return (rect.Left <= 0 && rect.Top <= 0 && 
                        windowWidth >= screenWidth - 10 && 
                        windowHeight >= screenHeight - 10);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        private bool IsMaximizedWindow(IntPtr hWnd)
+        {
+            try
+            {
+                // Check the window style for WS_MAXIMIZE flag
+                var windowLong = NativeMethods.GetWindowLong(hWnd, NativeMethods.GWL_STYLE);
+                return (windowLong & NativeMethods.WS_MAXIMIZE) != 0;
             }
             catch
             {

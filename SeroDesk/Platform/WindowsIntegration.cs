@@ -33,7 +33,7 @@ namespace SeroDesk.Platform
         
         public static void EnableBlurBehindWindow(IntPtr hwnd)
         {
-            var blurBehind = new DWM_BLURBEHIND
+            var blurBehind = new NativeMethods.DWM_BLURBEHIND
             {
                 dwFlags = 1, // DWM_BB_ENABLE
                 fEnable = true,
@@ -46,7 +46,7 @@ namespace SeroDesk.Platform
         
         public static void ExtendFrameIntoClientArea(IntPtr hwnd)
         {
-            var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+            var margins = new NativeMethods.MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
             NativeMethods.DwmExtendFrameIntoClientArea(hwnd, ref margins);
         }
         

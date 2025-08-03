@@ -428,13 +428,13 @@ namespace SeroDesk.Platform
             
             if (result == 0 && thumbnail != IntPtr.Zero)
             {
-                var props = new DWM_THUMBNAIL_PROPERTIES
+                var props = new NativeMethods.DWM_THUMBNAIL_PROPERTIES
                 {
                     dwFlags = 0x1F, // All properties
                     opacity = 255,
                     fVisible = true,
                     fSourceClientAreaOnly = true,
-                    rcDestination = new RECT
+                    rcDestination = new NativeMethods.RECT
                     {
                         Left = (int)bounds.Left,
                         Top = (int)bounds.Top,

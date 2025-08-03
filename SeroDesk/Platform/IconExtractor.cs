@@ -46,7 +46,7 @@ namespace SeroDesk.Platform
             try
             {
                 var dummyFile = "dummy" + extension;
-                var shfi = new SHFILEINFO();
+                var shfi = new NativeMethods.SHFILEINFO();
                 var flags = NativeMethods.SHGFI_ICON | NativeMethods.SHGFI_USEFILEATTRIBUTES;
                 
                 if (largeIcon)
@@ -81,7 +81,7 @@ namespace SeroDesk.Platform
             try
             {
                 // Try using SHGetFileInfo first
-                var shfi = new SHFILEINFO();
+                var shfi = new NativeMethods.SHFILEINFO();
                 var flags = NativeMethods.SHGFI_ICON;
                 
                 if (largeIcon)
