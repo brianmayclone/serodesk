@@ -70,17 +70,17 @@ namespace SeroDesk.ViewModels
         
         private void LoadCurrentSettings()
         {
-            // Load current system settings
+            // Load current system settings using Windows APIs
             try
             {
-                _isWiFiEnabled = SystemSettings.IsWiFiEnabled();
-                _isBluetoothEnabled = SystemSettings.IsBluetoothEnabled();
-                _isMobileDataEnabled = SystemSettings.IsMobileDataEnabled();
-                _isAirplaneModeEnabled = SystemSettings.IsAirplaneModeEnabled();
-                _isHotspotEnabled = SystemSettings.IsHotspotEnabled();
-                _isOrientationLocked = SystemSettings.IsOrientationLocked();
-                _brightnessLevel = SystemSettings.GetBrightnessLevel();
-                _volumeLevel = SystemSettings.GetVolumeLevel();
+                _isWiFiEnabled = WindowsSystemControl.IsWiFiEnabled();
+                _isBluetoothEnabled = WindowsSystemControl.IsBluetoothEnabled();
+                _isMobileDataEnabled = true; // Not directly controllable on desktop Windows
+                _isAirplaneModeEnabled = WindowsSystemControl.IsAirplaneModeEnabled();
+                _isHotspotEnabled = WindowsSystemControl.IsMobileHotspotEnabled();
+                _isOrientationLocked = false; // Not applicable for desktop
+                _brightnessLevel = WindowsSystemControl.GetBrightnessLevel();
+                _volumeLevel = WindowsSystemControl.GetVolumeLevel();
             }
             catch
             {
@@ -109,57 +109,56 @@ namespace SeroDesk.ViewModels
         public void ToggleWiFi()
         {
             IsWiFiEnabled = !IsWiFiEnabled;
-            SystemSettings.SetWiFiEnabled(IsWiFiEnabled);
+            WindowsSystemControl.SetWiFiEnabled(IsWiFiEnabled);
         }
         
         public void ToggleBluetooth()
         {
             IsBluetoothEnabled = !IsBluetoothEnabled;
-            SystemSettings.SetBluetoothEnabled(IsBluetoothEnabled);
+            WindowsSystemControl.SetBluetoothEnabled(IsBluetoothEnabled);
         }
         
         public void ToggleMobileData()
         {
+            // Mobile data toggle not applicable for desktop Windows
             IsMobileDataEnabled = !IsMobileDataEnabled;
-            SystemSettings.SetMobileDataEnabled(IsMobileDataEnabled);
         }
         
         public void ToggleAirplaneMode()
         {
             IsAirplaneModeEnabled = !IsAirplaneModeEnabled;
-            SystemSettings.SetAirplaneModeEnabled(IsAirplaneModeEnabled);
+            WindowsSystemControl.SetAirplaneModeEnabled(IsAirplaneModeEnabled);
             
-            // When airplane mode is enabled, disable WiFi, Bluetooth, and Mobile Data
+            // When airplane mode is enabled, disable WiFi and Bluetooth
             if (IsAirplaneModeEnabled)
             {
                 IsWiFiEnabled = false;
                 IsBluetoothEnabled = false;
-                IsMobileDataEnabled = false;
             }
         }
         
         public void ToggleHotspot()
         {
             IsHotspotEnabled = !IsHotspotEnabled;
-            SystemSettings.SetHotspotEnabled(IsHotspotEnabled);
+            WindowsSystemControl.SetMobileHotspotEnabled(IsHotspotEnabled);
         }
         
         public void ToggleOrientationLock()
         {
+            // Orientation lock not applicable for desktop
             IsOrientationLocked = !IsOrientationLocked;
-            SystemSettings.SetOrientationLocked(IsOrientationLocked);
         }
         
         public void SetBrightness(int level)
         {
             BrightnessLevel = Math.Max(0, Math.Min(100, level));
-            SystemSettings.SetBrightnessLevel(BrightnessLevel);
+            WindowsSystemControl.SetBrightnessLevel(BrightnessLevel);
         }
         
         public void SetVolume(int level)
         {
             VolumeLevel = Math.Max(0, Math.Min(100, level));
-            SystemSettings.SetVolumeLevel(VolumeLevel);
+            WindowsSystemControl.SetVolumeLevel(VolumeLevel);
         }
         
         public event PropertyChangedEventHandler? PropertyChanged;

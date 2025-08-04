@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using SeroDesk.Platform;
@@ -27,6 +28,9 @@ namespace SeroDesk.Views
                 
                 UpdateToggleStates();
             };
+            
+            // Add click-outside handler to auto-hide
+            this.MouseDown += OnMouseDown;
         }
         
         public void Show()
@@ -35,6 +39,12 @@ namespace SeroDesk.Views
             
             _isVisible = true;
             ControlPanel.Visibility = Visibility.Visible;
+            
+            // Subscribe to global mouse events to detect clicks outside
+            if (Application.Current.MainWindow != null)
+            {
+                Application.Current.MainWindow.PreviewMouseDown += MainWindow_PreviewMouseDown;
+            }
             
             // Slide down animation
             var slideDown = new DoubleAnimation
@@ -53,6 +63,12 @@ namespace SeroDesk.Views
             if (!_isVisible) return;
             
             _isVisible = false;
+            
+            // Unsubscribe from global mouse events
+            if (Application.Current.MainWindow != null)
+            {
+                Application.Current.MainWindow.PreviewMouseDown -= MainWindow_PreviewMouseDown;
+            }
             
             // Slide up animation
             var slideUp = new DoubleAnimation
@@ -140,14 +156,35 @@ namespace SeroDesk.Views
             UpdateToggleState(HotspotToggle, _viewModel.IsHotspotEnabled);
             UpdateToggleState(OrientationLockToggle, _viewModel.IsOrientationLocked);
             
-            OrientationLockStatus.Text = _viewModel.IsOrientationLocked ? "On" : "Off";
+            if (BrightnessSlider != null)
+                BrightnessSlider.Value = _viewModel.BrightnessLevel;
+            if (VolumeSlider != null)
+                VolumeSlider.Value = _viewModel.VolumeLevel;
         }
         
         private void UpdateToggleState(Button button, bool isEnabled)
         {
-            button.Background = new SolidColorBrush(isEnabled ? 
-                Color.FromRgb(0, 128, 255) :  // Blue for enabled
-                Color.FromRgb(102, 102, 102)); // Gray for disabled
+            button.Background = isEnabled ? 
+                new SolidColorBrush(Color.FromRgb(0, 122, 255)) : // iOS blue
+                new SolidColorBrush(Color.FromRgb(48, 48, 48));   // Dark gray
+        }
+        
+        private void OnMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Prevent hiding when clicking inside the control center
+            e.Handled = true;
+        }
+        
+        private void MainWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Check if click is outside this control
+            var position = e.GetPosition(this);
+            var bounds = new Rect(0, 0, ActualWidth, ActualHeight);
+            
+            if (!bounds.Contains(position) && _isVisible)
+            {
+                Hide();
+            }
         }
     }
 }

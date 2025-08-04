@@ -9,6 +9,7 @@ namespace SeroDesk.ViewModels
     public class NotificationCenterViewModel : INotifyPropertyChanged
     {
         private ObservableCollection<NotificationItem> _notifications;
+        private WindowsNotificationListener? _notificationListener;
         
         public ObservableCollection<NotificationItem> Notifications
         {
@@ -21,10 +22,36 @@ namespace SeroDesk.ViewModels
         public NotificationCenterViewModel()
         {
             _notifications = new ObservableCollection<NotificationItem>();
-            LoadTestNotifications();
             
-            // Subscribe to system notifications
+            // Initialize Windows notification listener
+            _notificationListener = new WindowsNotificationListener();
+            _notificationListener.NotificationReceived += OnWindowsNotificationReceived;
+            _notificationListener.StartListening();
+            
+            // Still subscribe to the old system for backward compatibility
             SystemNotificationMonitor.NotificationReceived += OnSystemNotificationReceived;
+        }
+        
+        private void OnWindowsNotificationReceived(object? sender, NotificationReceivedEventArgs e)
+        {
+            var notification = new NotificationItem
+            {
+                Id = e.NotificationId,
+                AppName = e.AppDisplayName,
+                Title = e.Title,
+                Content = e.Content,
+                Timestamp = e.Timestamp,
+                Type = NotificationType.Information, // Default type
+                Priority = NotificationPriority.Normal,
+                AppIcon = null // Could be loaded from e.ImagePath
+            };
+            
+            // Add to collection on UI thread
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                _notifications.Insert(0, notification); // Add at top
+                OnPropertyChanged(nameof(HasNotifications));
+            });
         }
         
         private void LoadTestNotifications()

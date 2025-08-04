@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Animation;
 using SeroDesk.Models;
 using SeroDesk.ViewModels;
@@ -24,6 +25,9 @@ namespace SeroDesk.Views
                     DataContext = _viewModel;
                 }
             };
+            
+            // Add click-outside handler to auto-hide
+            this.MouseDown += OnMouseDown;
         }
         
         public void Show()
@@ -32,6 +36,12 @@ namespace SeroDesk.Views
             
             _isVisible = true;
             NotificationPanel.Visibility = Visibility.Visible;
+            
+            // Subscribe to global mouse events to detect clicks outside
+            if (Application.Current.MainWindow != null)
+            {
+                Application.Current.MainWindow.PreviewMouseDown += MainWindow_PreviewMouseDown;
+            }
             
             // Slide down animation
             var slideDown = new DoubleAnimation
@@ -50,6 +60,12 @@ namespace SeroDesk.Views
             if (!_isVisible) return;
             
             _isVisible = false;
+            
+            // Unsubscribe from global mouse events
+            if (Application.Current.MainWindow != null)
+            {
+                Application.Current.MainWindow.PreviewMouseDown -= MainWindow_PreviewMouseDown;
+            }
             
             // Slide up animation
             var slideUp = new DoubleAnimation
@@ -80,6 +96,24 @@ namespace SeroDesk.Views
             if (sender is Button button && button.Tag is NotificationItem notification)
             {
                 _viewModel?.RemoveNotification(notification);
+            }
+        }
+        
+        private void OnMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Prevent hiding when clicking inside the notification center
+            e.Handled = true;
+        }
+        
+        private void MainWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Check if click is outside this control
+            var position = e.GetPosition(this);
+            var bounds = new Rect(0, 0, ActualWidth, ActualHeight);
+            
+            if (!bounds.Contains(position) && _isVisible)
+            {
+                Hide();
             }
         }
     }
