@@ -19,6 +19,7 @@ namespace SeroDesk.Models
         private bool _isSelected;
         private bool _isDragging;
         private double _scale = 1.0;
+        private string _publisher = string.Empty;
         
         public string Id { get; set; } = Guid.NewGuid().ToString();
         
@@ -44,6 +45,12 @@ namespace SeroDesk.Models
         {
             get => _workingDirectory;
             set { _workingDirectory = value; OnPropertyChanged(); }
+        }
+        
+        public string Publisher
+        {
+            get => _publisher;
+            set { _publisher = value; OnPropertyChanged(); }
         }
         
         public ImageSource? IconImage

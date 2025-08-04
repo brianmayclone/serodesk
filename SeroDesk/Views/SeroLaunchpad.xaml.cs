@@ -110,7 +110,7 @@ namespace SeroDesk.Views
         
         private bool _isLoading = false;
         
-        public async void Show()
+        public void Show()
         {
             if (Visibility == Visibility.Visible)
                 return; // Already visible, prevent multiple calls
@@ -230,64 +230,13 @@ namespace SeroDesk.Views
             if (_viewModel != null)
             {
                 _viewModel.FilterApplications(SearchBox.Text);
-                
-                // For instant feedback, immediately update visibility while debounced search runs
-                UpdateIconVisibility(SearchBox.Text);
+                // Remove instant visual feedback - let the ViewModel handle everything
+                // to avoid conflicts between cached icons and proper search results
             }
         }
         
-        private void UpdateIconVisibility(string searchText)
-        {
-            if (string.IsNullOrWhiteSpace(searchText))
-            {
-                // Restore all cached icons to their original positions
-                foreach (var cachedIcon in _iconCache.Values)
-                {
-                    if (_originalPositions.TryGetValue(cachedIcon, out var originalPos))
-                    {
-                        Canvas.SetLeft(cachedIcon, originalPos.X);
-                        Canvas.SetTop(cachedIcon, originalPos.Y);
-                        cachedIcon.Visibility = Visibility.Visible;
-                    }
-                }
-                return;
-            }
-            
-            // Hide all icons first
-            foreach (var cachedIcon in _iconCache.Values)
-            {
-                cachedIcon.Visibility = Visibility.Collapsed;
-            }
-            
-            // Find matching icons and reposition them
-            var searchLower = searchText.ToLowerInvariant();
-            var matchingIcons = new List<SeroIconView>();
-            
-            foreach (var kvp in _iconCache)
-            {
-                var item = kvp.Key;
-                var iconView = kvp.Value;
-                
-                bool matches = false;
-                if (item is AppIcon app)
-                {
-                    matches = app.Name.ToLowerInvariant().Contains(searchLower);
-                }
-                else if (item is AppGroup group)
-                {
-                    matches = group.Name.ToLowerInvariant().Contains(searchLower) ||
-                             group.Apps.Any(a => a.Name.ToLowerInvariant().Contains(searchLower));
-                }
-                
-                if (matches)
-                {
-                    matchingIcons.Add(iconView);
-                }
-            }
-            
-            // Reposition matching icons in a grid starting from top-left
-            RepositionSearchResults(matchingIcons);
-        }
+        // Removed UpdateIconVisibility method - now handled entirely by ViewModel
+        // to avoid conflicts between cached icons and proper search results
         
         private (double canvasWidth, double canvasHeight, int columnsPerPage, int rowsPerPage, double horizontalSpacing, double verticalSpacing, double iconWidth, double iconHeight) GetGridDimensions()
         {
@@ -310,29 +259,7 @@ namespace SeroDesk.Views
             return (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight);
         }
         
-        private void RepositionSearchResults(List<SeroIconView> matchingIcons)
-        {
-            if (IconCanvas == null || matchingIcons.Count == 0) return;
-            
-            // Use same grid dimensions as CreateIconViews
-            var (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
-            
-            // Position icons in grid starting from top-left
-            for (int i = 0; i < matchingIcons.Count; i++)
-            {
-                var iconView = matchingIcons[i];
-                var row = i / columnsPerPage;
-                var col = i % columnsPerPage;
-                
-                var x = col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
-                var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
-                
-                Canvas.SetLeft(iconView, x);
-                Canvas.SetTop(iconView, y);
-                iconView.GridPosition = new Point(col, row);
-                iconView.Visibility = Visibility.Visible;
-            }
-        }
+        // Removed RepositionSearchResults method - now handled by CreateIconViews
         
         private void PlayLaunchAnimation(Button button)
         {
@@ -1003,6 +930,8 @@ namespace SeroDesk.Views
         
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"ViewModel_PropertyChanged: {e.PropertyName}");
+            
             if (e.PropertyName == nameof(LaunchpadViewModel.TotalPages) || 
                 e.PropertyName == nameof(LaunchpadViewModel.CurrentPage))
             {
@@ -1010,9 +939,10 @@ namespace SeroDesk.Views
                 UpdatePagesLayout();
             }
             else if (e.PropertyName == nameof(LaunchpadViewModel.AllApplications) || 
-                     e.PropertyName == nameof(LaunchpadViewModel.AppGroups))
+                     e.PropertyName == nameof(LaunchpadViewModel.AppGroups) ||
+                     e.PropertyName == nameof(LaunchpadViewModel.DisplayItems))
             {
-                System.Diagnostics.Debug.WriteLine($"PropertyChanged triggered for {e.PropertyName}, creating icon views");
+                System.Diagnostics.Debug.WriteLine($"PropertyChanged triggered for {e.PropertyName}, creating icon views (DisplayItems count: {_viewModel?.DisplayItems.Count ?? 0})");
                 CreateIconViews();
             }
         }
@@ -1105,9 +1035,10 @@ namespace SeroDesk.Views
         {
             if (_viewModel == null || IconCanvas == null) return;
             
-            System.Diagnostics.Debug.WriteLine($"CreateIconViews: DisplayItems={_viewModel.DisplayItems.Count}, SearchText='{_viewModel.SearchText}' (Using cache: {_iconCache.Count} items)");
+            bool isSearchMode = !string.IsNullOrWhiteSpace(_viewModel.SearchText);
+            System.Diagnostics.Debug.WriteLine($"CreateIconViews: DisplayItems={_viewModel.DisplayItems.Count}, SearchMode={isSearchMode}, SearchText='{_viewModel.SearchText}'");
             
-            // Hide all icons first
+            // Hide all cached icons first
             foreach (var cachedIcon in _iconCache.Values)
             {
                 cachedIcon.Visibility = Visibility.Collapsed;
@@ -1120,13 +1051,11 @@ namespace SeroDesk.Views
                 return;
             }
             
-            // Don't clear canvas - reuse cached icons
-            
             // Use shared grid dimensions calculation
             var (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
             var iconsPerPage = columnsPerPage * rowsPerPage;
             
-            System.Diagnostics.Debug.WriteLine($"Canvas: {canvasWidth}x{canvasHeight}, Spacing: {horizontalSpacing}x{verticalSpacing}");
+            System.Diagnostics.Debug.WriteLine($"Canvas: {canvasWidth}x{canvasHeight}, Grid: {columnsPerPage}x{rowsPerPage}, Spacing: {horizontalSpacing}x{verticalSpacing}");
             
             // Create icon views for display items
             int iconIndex = 0;
@@ -1151,7 +1080,7 @@ namespace SeroDesk.Views
                             AppIcon = app,
                             IsGroup = false
                         };
-                        System.Diagnostics.Debug.WriteLine($"Creating NEW SeroIconView for app {app.Name}, IconImage={app.IconImage != null}");
+                        System.Diagnostics.Debug.WriteLine($"Creating NEW SeroIconView for app {app.Name}");
                     }
                     else if (item is AppGroup group)
                     {
@@ -1167,20 +1096,37 @@ namespace SeroDesk.Views
                     {
                         _iconCache[item] = iconView;
                         IconCanvas.Children.Add(iconView);
+                        
+                        // Hook up event handlers for newly created icons
+                        iconView.IconClicked += OnIconClicked;
+                        iconView.DragStarted += OnIconDragStarted;
+                        iconView.DragMoved += OnIconDragMoved;
+                        iconView.DragCompleted += OnIconDragCompleted;
+                        iconView.PinToDockRequested += OnPinToDockRequested;
+                        iconView.UnpinFromDockRequested += OnUnpinFromDockRequested;
                     }
                 }
                 
                 if (iconView != null)
                 {
-                    // Calculate position - only show icons for current page
-                    var pageIndex = iconIndex / iconsPerPage;
-                    var localIndex = iconIndex % iconsPerPage;
-                    var row = localIndex / columnsPerPage;
-                    var col = localIndex % columnsPerPage;
+                    // In search mode, show all results on one page
+                    // In normal mode, respect paging
+                    bool shouldShow = true;
                     
-                    // Only position icons that belong to the current page
-                    if (pageIndex == (_viewModel?.CurrentPage ?? 0))
+                    if (!isSearchMode)
                     {
+                        // Normal mode: only show icons for current page
+                        var pageIndex = iconIndex / iconsPerPage;
+                        shouldShow = pageIndex == (_viewModel?.CurrentPage ?? 0);
+                    }
+                    
+                    if (shouldShow)
+                    {
+                        // Calculate position based on mode
+                        int displayIndex = isSearchMode ? iconIndex : iconIndex % iconsPerPage;
+                        var row = displayIndex / columnsPerPage;
+                        var col = displayIndex % columnsPerPage;
+                        
                         var x = col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
                         var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
                         
@@ -1189,8 +1135,8 @@ namespace SeroDesk.Views
                         iconView.GridPosition = new Point(col, row);
                         iconView.Visibility = Visibility.Visible;
                         
-                        // Store original position for search reset
-                        _originalPositions[iconView] = new Point(x, y);
+                        var name = (item is AppIcon a) ? a.Name : ((AppGroup)item).Name;
+                        System.Diagnostics.Debug.WriteLine($"Positioned {name} at ({x:F0}, {y:F0}) - grid ({col}, {row})");
                     }
                     else
                     {
@@ -1198,24 +1144,7 @@ namespace SeroDesk.Views
                         iconView.Visibility = Visibility.Collapsed;
                     }
                     
-                    // Hook up event handlers (only if not already cached)
-                    if (!_iconCache.ContainsKey(item) || _iconCache[item] != iconView)
-                    {
-                        iconView.IconClicked += OnIconClicked;
-                        iconView.DragStarted += OnIconDragStarted;
-                        iconView.DragMoved += OnIconDragMoved;
-                        iconView.DragCompleted += OnIconDragCompleted;
-                        iconView.PinToDockRequested += OnPinToDockRequested;
-                        iconView.UnpinFromDockRequested += OnUnpinFromDockRequested;
-                    }
-                    
-                    // Don't add to canvas again if already cached
                     iconIndex++;
-                    
-                    var name = (item is AppIcon a) ? a.Name : ((AppGroup)item).Name;
-                    var currentX = Canvas.GetLeft(iconView);
-                    var currentY = Canvas.GetTop(iconView);
-                    System.Diagnostics.Debug.WriteLine($"Added {name} at position ({currentX}, {currentY})");
                 }
             }
             

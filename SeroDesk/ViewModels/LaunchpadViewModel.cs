@@ -100,7 +100,7 @@ namespace SeroDesk.ViewModels
             
             _configPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SeroDesk", "layout_config.json");
+                "SeroDesk", "launchpad_config.json"); // Eindeutiger Name um Konflikte zu vermeiden
             
             // Load Windows wallpaper
             LoadWallpaper();
@@ -151,19 +151,28 @@ namespace SeroDesk.ViewModels
                 }
                 
                 // Check if this is first run or we have a saved layout
+                System.Diagnostics.Debug.WriteLine($"LoadAllApplicationsAsync: Checking layout config - IsFirstRun: {_layoutConfig?.IsFirstRun}, Config null: {_layoutConfig == null}");
+                
                 if (_layoutConfig?.IsFirstRun == true || _layoutConfig == null)
                 {
+                    System.Diagnostics.Debug.WriteLine("LoadAllApplicationsAsync: First run detected - auto-categorizing apps");
                     // Auto-categorize tools on first run
                     await AutoCategorizeApps(allApps);
                     
                     if (_layoutConfig != null)
                     {
                         _layoutConfig.IsFirstRun = false;
+                        System.Diagnostics.Debug.WriteLine("LoadAllApplicationsAsync: Setting IsFirstRun = false and saving config");
                         SaveLayoutConfiguration();
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("LoadAllApplicationsAsync: WARNING - _layoutConfig is null after auto-categorization!");
                     }
                 }
                 else
                 {
+                    System.Diagnostics.Debug.WriteLine("LoadAllApplicationsAsync: Existing layout detected - restoring saved layout");
                     // Restore saved layout
                     RestoreAppLayout(allApps);
                 }
@@ -207,108 +216,85 @@ namespace SeroDesk.ViewModels
         
         public void FilterApplications(string searchText)
         {
-            // If search text is empty, clear immediately (no debounce needed)
-            if (string.IsNullOrWhiteSpace(searchText))
-            {
-                _searchTimer?.Stop();
-                _pendingSearchText = "";
-                PerformSearch("");
-                return;
-            }
-            
-            // Debounce search - only search after user stops typing for 300ms
-            _pendingSearchText = searchText;
-            
-            if (_searchTimer == null)
-            {
-                _searchTimer = new System.Windows.Threading.DispatcherTimer
-                {
-                    Interval = TimeSpan.FromMilliseconds(300)
-                };
-                _searchTimer.Tick += (s, e) =>
-                {
-                    _searchTimer.Stop();
-                    PerformSearch(_pendingSearchText);
-                };
-            }
-            
-            _searchTimer.Stop();
-            _searchTimer.Start();
+            System.Diagnostics.Debug.WriteLine($"FilterApplications called with: '{searchText}'");
+            // Perform search immediately for better user experience
+            // No debouncing needed since we're now using proper caching
+            PerformSearch(searchText);
         }
         
         private void PerformSearch(string searchText)
         {
+            System.Diagnostics.Debug.WriteLine($"PerformSearch called with: '{searchText}' (IsNullOrWhiteSpace: {string.IsNullOrWhiteSpace(searchText)})");
+            
             if (string.IsNullOrWhiteSpace(searchText))
             {
+                System.Diagnostics.Debug.WriteLine("Empty search - showing organized view with groups");
                 // Show organized view with groups
                 UpdateDisplayItems();
             }
             else
             {
-                // Show flat search results
+                System.Diagnostics.Debug.WriteLine($"Non-empty search '{searchText}' - showing flat search results");
+                // Show flat search results - ONLY individual apps
+                var previousCount = DisplayItems.Count;
                 DisplayItems.Clear();
+                System.Diagnostics.Debug.WriteLine($"Cleared DisplayItems (was {previousCount} items)");
                 
                 var searchLower = searchText.ToLowerInvariant();
+                var allMatchingApps = new List<AppIcon>();
                 
-                // Pre-filter apps once instead of multiple LINQ queries
-                var filteredApps = AllApplications
+                System.Diagnostics.Debug.WriteLine($"Search '{searchText}': Searching in {AllApplications.Count} ungrouped apps and {AppGroups.Sum(g => g.Apps.Count)} grouped apps");
+                
+                // 1. Search in ungrouped apps (AllApplications contains ungrouped apps only)
+                var ungroupedMatches = AllApplications
+                    .Where(app => string.IsNullOrEmpty(app.GroupId) && app.Name.ToLowerInvariant().Contains(searchLower))
+                    .ToList();
+                allMatchingApps.AddRange(ungroupedMatches);
+                System.Diagnostics.Debug.WriteLine($"Found {ungroupedMatches.Count} ungrouped apps matching '{searchText}': {string.Join(", ", ungroupedMatches.Select(a => a.Name))}");
+                
+                // 2. Search in ALL apps within groups - show them as individual apps
+                var groupedMatches = AppGroups
+                    .SelectMany(group => group.Apps)
                     .Where(app => app.Name.ToLowerInvariant().Contains(searchLower))
+                    .ToList();
+                allMatchingApps.AddRange(groupedMatches);
+                System.Diagnostics.Debug.WriteLine($"Found {groupedMatches.Count} grouped apps matching '{searchText}': {string.Join(", ", groupedMatches.Select(a => a.Name))}");
+                
+                // 3. Also include apps from groups where the GROUP NAME matches
+                var appsFromNamedGroups = AppGroups
+                    .Where(group => group.Name.ToLowerInvariant().Contains(searchLower))
+                    .SelectMany(group => group.Apps)
+                    .Where(app => !app.Name.ToLowerInvariant().Contains(searchLower)) // Don't duplicate apps already found
+                    .ToList();
+                allMatchingApps.AddRange(appsFromNamedGroups);
+                System.Diagnostics.Debug.WriteLine($"Found {appsFromNamedGroups.Count} additional apps from groups named '{searchText}': {string.Join(", ", appsFromNamedGroups.Select(a => a.Name))}");
+                
+                // Sort all results and add to DisplayItems
+                var sortedResults = allMatchingApps
+                    .Distinct() // Remove duplicates
                     .OrderBy(app => app.Name)
-                    .ToList(); // Materialize once
+                    .ToList();
                 
-                var filteredGroups = AppGroups
-                    .Where(group => 
-                        group.Name.ToLowerInvariant().Contains(searchLower) ||
-                        group.Apps.Any(app => app.Name.ToLowerInvariant().Contains(searchLower)))
-                    .ToList(); // Materialize once
-                
-                // Add filtered results
-                foreach (var group in filteredGroups)
-                {
-                    DisplayItems.Add(group);
-                }
-                
-                foreach (var app in filteredApps.Where(app => string.IsNullOrEmpty(app.GroupId)))
+                System.Diagnostics.Debug.WriteLine($"Adding {sortedResults.Count} sorted results to DisplayItems");
+                foreach (var app in sortedResults)
                 {
                     DisplayItems.Add(app);
+                    System.Diagnostics.Debug.WriteLine($"  Added: {app.Name}");
                 }
+                
+                System.Diagnostics.Debug.WriteLine($"Search '{searchText}': Total {DisplayItems.Count} individual apps shown as results");
             }
             
             // Force UI update after search
+            System.Diagnostics.Debug.WriteLine($"Triggering PropertyChanged for DisplayItems (count: {DisplayItems.Count})");
             OnPropertyChanged(nameof(DisplayItems));
         }
         
         private void UpdateDisplayItems()
         {
-            if (string.IsNullOrWhiteSpace(SearchText))
-            {
-                // Organized view with paging
-                CreatePages();
-                UpdateCurrentPageItems();
-            }
-            else
-            {
-                // Search view - show all matching items on one page
-                DisplayItems.Clear();
-                
-                var filteredGroups = AppGroups.Where(group =>
-                    group.Name.ToLowerInvariant().Contains(SearchText.ToLowerInvariant()) ||
-                    group.Apps.Any(app => app.Name.ToLowerInvariant().Contains(SearchText.ToLowerInvariant())));
-                
-                var filteredApps = AllApplications.Where(app => 
-                    app.Name.ToLowerInvariant().Contains(SearchText.ToLowerInvariant()) &&
-                    string.IsNullOrEmpty(app.GroupId));
-                
-                foreach (var group in filteredGroups)
-                {
-                    DisplayItems.Add(group);
-                }
-                
-                foreach (var app in filteredApps)
-                {
-                    DisplayItems.Add(app);
-                }
-            }
+            // Organized view with groups and paging (no search)
+            CreatePages();
+            UpdateCurrentPageItems();
         }
         
         private void CreatePages()
@@ -370,7 +356,7 @@ namespace SeroDesk.ViewModels
             var group = new AppGroup(name);
             AppGroups.Add(group);
             UpdateDisplayItems();
-            SaveGroupsToStorage();
+            SaveLayoutConfiguration(); // Use unified config instead of separate group storage
             return group;
         }
         
@@ -383,7 +369,7 @@ namespace SeroDesk.ViewModels
             // Add to new group
             group.AddApp(app);
             UpdateDisplayItems();
-            SaveGroupsToStorage();
+            SaveLayoutConfiguration(); // Use unified config instead of separate group storage
         }
         
         public void RemoveAppFromGroup(AppIcon app)
@@ -398,13 +384,13 @@ namespace SeroDesk.ViewModels
             }
             
             UpdateDisplayItems();
-            SaveGroupsToStorage();
+            SaveLayoutConfiguration(); // Use unified config instead of separate group storage
         }
         
         public void RenameGroup(AppGroup group, string newName)
         {
             group.Name = newName;
-            SaveGroupsToStorage();
+            SaveLayoutConfiguration(); // Use unified config instead of separate group storage
         }
         
         public void AddApplication(AppIcon app)
@@ -429,70 +415,8 @@ namespace SeroDesk.ViewModels
             UpdateDisplayItems();
         }
         
-        private async Task LoadGroupsFromStorage()
-        {
-            try
-            {
-                var configPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "SeroDesk", "app_groups.json");
-                
-                if (File.Exists(configPath))
-                {
-                    var json = await File.ReadAllTextAsync(configPath);
-                    var savedGroups = Newtonsoft.Json.JsonConvert.DeserializeObject<List<SavedGroup>>(json);
-                    
-                    if (savedGroups != null)
-                    {
-                        foreach (var saved in savedGroups)
-                        {
-                            var group = new AppGroup(saved.Name) { Id = saved.Id };
-                            
-                            // Add apps to group
-                            foreach (var appId in saved.AppIds)
-                            {
-                                var app = AllApplications.FirstOrDefault(a => a.Id == appId);
-                                if (app != null)
-                                {
-                                    group.AddApp(app);
-                                }
-                            }
-                            
-                            if (group.Apps.Count > 0)
-                            {
-                                AppGroups.Add(group);
-                            }
-                        }
-                    }
-                }
-            }
-            catch { }
-        }
-        
-        private async void SaveGroupsToStorage()
-        {
-            try
-            {
-                var configDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "SeroDesk");
-                
-                Directory.CreateDirectory(configDir);
-                
-                var savedGroups = AppGroups.Select(group => new SavedGroup
-                {
-                    Id = group.Id,
-                    Name = group.Name,
-                    AppIds = group.Apps.Select(app => app.Id).ToList()
-                }).ToList();
-                
-                var json = Newtonsoft.Json.JsonConvert.SerializeObject(savedGroups, 
-                    Newtonsoft.Json.Formatting.Indented);
-                
-                await File.WriteAllTextAsync(Path.Combine(configDir, "app_groups.json"), json);
-            }
-            catch { }
-        }
+        // Removed LoadGroupsFromStorage and SaveGroupsToStorage methods
+        // All group data is now saved in the unified launchpad_config.json file
         
         public void NextPage()
         {
@@ -566,7 +490,7 @@ namespace SeroDesk.ViewModels
                 AppGroups.Add(group);
                 
             // Save to storage
-            SaveGroupsToStorage();
+            SaveLayoutConfiguration(); // Use unified config instead of separate group storage
         }
         
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -576,104 +500,57 @@ namespace SeroDesk.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
         
-        private class SavedGroup
-        {
-            public string Id { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public List<string> AppIds { get; set; } = new List<string>();
-        }
+        // Removed old SavedGroup class - using Models.SavedGroup from LayoutConfiguration instead
         
         // New methods for auto-categorization and layout persistence
         private Task AutoCategorizeApps(List<AppIcon> apps)
         {
-            var toolsList = new List<AppIcon>();
-            var regularApps = new List<AppIcon>();
-            var folderGroups = new Dictionary<string, List<AppIcon>>();
+            System.Diagnostics.Debug.WriteLine($"AutoCategorizeApps: Starting intelligent categorization of {apps.Count} apps");
             
+            // Use intelligent categorizer to create smart groups
+            var categorizedApps = AppCategorizer.CategorizeApplications(apps);
+            var appGroups = AppCategorizer.CreateAppGroups(categorizedApps);
+            
+            System.Diagnostics.Debug.WriteLine($"AutoCategorizeApps: Created {appGroups.Count} intelligent groups");
+            
+            // Add created groups to AppGroups collection
+            foreach (var group in appGroups)
+            {
+                AppGroups.Add(group);
+                System.Diagnostics.Debug.WriteLine($"Created group '{group.Name}' with {group.Apps.Count} apps");
+            }
+            
+            // Add all apps to AllApplications (both grouped and ungrouped)
             foreach (var app in apps)
-            {
-                // Check if it's a tool
-                if (ToolPatterns.IsTool(app.Name, app.ExecutablePath) && 
-                    !ToolPatterns.IsMajorApp(app.Name, app.ExecutablePath))
-                {
-                    toolsList.Add(app);
-                }
-                else
-                {
-                    regularApps.Add(app);
-                    
-                    // Check for folder grouping - look for apps from same root folder
-                    if (!string.IsNullOrEmpty(app.ExecutablePath))
-                    {
-                        var rootFolder = GetRootInstallFolder(app.ExecutablePath);
-                        if (!string.IsNullOrEmpty(rootFolder))
-                        {
-                            if (!folderGroups.ContainsKey(rootFolder))
-                            {
-                                folderGroups[rootFolder] = new List<AppIcon>();
-                            }
-                            folderGroups[rootFolder].Add(app);
-                        }
-                    }
-                }
-            }
-            
-            // Create Tools group if we have tools
-            if (toolsList.Count > 0)
-            {
-                var toolsGroup = new AppGroup("Tools & Utilities")
-                {
-                    Id = "tools-utilities-auto"
-                };
-                
-                foreach (var tool in toolsList)
-                {
-                    toolsGroup.AddApp(tool);
-                    tool.GroupId = toolsGroup.Id;
-                }
-                
-                AppGroups.Add(toolsGroup);
-                System.Diagnostics.Debug.WriteLine($"Created Tools group with {toolsList.Count} apps");
-            }
-            
-            // Create folder-based groups for apps with multiple entries from same root
-            foreach (var folderGroup in folderGroups.Where(g => g.Value.Count >= 2))
-            {
-                var folderName = Path.GetFileName(folderGroup.Key);
-                var groupName = GetFriendlyGroupName(folderName, folderGroup.Value);
-                
-                var appGroup = new AppGroup(groupName)
-                {
-                    Id = $"folder-{folderName.ToLowerInvariant().Replace(" ", "-")}-auto"
-                };
-                
-                foreach (var app in folderGroup.Value)
-                {
-                    appGroup.AddApp(app);
-                    app.GroupId = appGroup.Id;
-                    regularApps.Remove(app); // Remove from regular apps since it's now grouped
-                }
-                
-                AppGroups.Add(appGroup);
-                System.Diagnostics.Debug.WriteLine($"Created folder group '{groupName}' with {folderGroup.Value.Count} apps");
-            }
-            
-            // Add remaining regular apps
-            foreach (var app in regularApps.OrderBy(a => a.Name))
             {
                 AllApplications.Add(app);
             }
             
-            // Save initial layout
+            // IMPORTANT: Update DisplayItems after categorization but BEFORE saving
+            UpdateDisplayItems();
+            
+            // Ensure we have a valid layout config before saving
+            if (_layoutConfig == null)
+            {
+                _layoutConfig = new LayoutConfiguration();
+                System.Diagnostics.Debug.WriteLine("AutoCategorizeApps: Created new _layoutConfig");
+            }
+            
+            // Save initial layout with proper group data
             SaveLayoutConfiguration();
+            
+            System.Diagnostics.Debug.WriteLine($"AutoCategorizeApps: Saved layout with {AppGroups.Count} groups and {AllApplications.Count} apps");
             
             return Task.CompletedTask;
         }
         
         private void RestoreAppLayout(List<AppIcon> apps)
         {
+            System.Diagnostics.Debug.WriteLine($"RestoreAppLayout: Starting with {apps.Count} apps");
+            
             if (_layoutConfig == null)
             {
+                System.Diagnostics.Debug.WriteLine("RestoreAppLayout: No config found, adding apps normally");
                 // No config, just add apps normally
                 foreach (var app in apps.OrderBy(a => a.Name))
                 {
@@ -682,6 +559,8 @@ namespace SeroDesk.ViewModels
                 return;
             }
             
+            System.Diagnostics.Debug.WriteLine($"RestoreAppLayout: Config found with {_layoutConfig.Groups?.Count ?? 0} groups and {_layoutConfig.AppPositions?.Count ?? 0} positions");
+            
             // Create a dictionary for quick lookup
             var appDict = apps.ToDictionary(
                 a => a.Id ?? a.ExecutablePath ?? a.Name,
@@ -689,8 +568,11 @@ namespace SeroDesk.ViewModels
             );
             
             // Restore groups first
-            foreach (var savedGroup in _layoutConfig.Groups)
+            System.Diagnostics.Debug.WriteLine($"RestoreAppLayout: Restoring {_layoutConfig.Groups?.Count ?? 0} groups");
+            foreach (var savedGroup in _layoutConfig.Groups ?? new List<Models.SavedGroup>())
             {
+                System.Diagnostics.Debug.WriteLine($"RestoreAppLayout: Restoring group '{savedGroup.Name}' with {savedGroup.AppIds.Count} app IDs");
+                
                 var group = new AppGroup(savedGroup.Name)
                 {
                     Id = savedGroup.Id
@@ -700,14 +582,24 @@ namespace SeroDesk.ViewModels
                 {
                     if (appDict.TryGetValue(appId, out var app))
                     {
+                        System.Diagnostics.Debug.WriteLine($"  Found app '{app.Name}' for group '{savedGroup.Name}'");
                         group.AddApp(app);
                         app.GroupId = group.Id;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  App with ID '{appId}' not found in current apps");
                     }
                 }
                 
                 if (group.Apps.Count > 0)
                 {
+                    System.Diagnostics.Debug.WriteLine($"  Added group '{savedGroup.Name}' with {group.Apps.Count} apps to AppGroups");
                     AppGroups.Add(group);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"  Skipped empty group '{savedGroup.Name}'");
                 }
             }
             
@@ -753,16 +645,31 @@ namespace SeroDesk.ViewModels
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "SeroDesk");
                 
+                System.Diagnostics.Debug.WriteLine($"LoadLayoutConfiguration: Config directory: {configDir}");
+                System.Diagnostics.Debug.WriteLine($"LoadLayoutConfiguration: Config file path: {_configPath}");
+                
                 Directory.CreateDirectory(configDir);
                 
                 if (File.Exists(_configPath))
                 {
+                    System.Diagnostics.Debug.WriteLine("LoadLayoutConfiguration: Config file exists, loading...");
                     var json = File.ReadAllText(_configPath);
+                    System.Diagnostics.Debug.WriteLine($"LoadLayoutConfiguration: Config JSON length: {json.Length}");
+                    
                     _layoutConfig = JsonConvert.DeserializeObject<LayoutConfiguration>(json);
-                    System.Diagnostics.Debug.WriteLine($"Loaded layout config: {_layoutConfig?.AppPositions.Count} positions, {_layoutConfig?.Groups.Count} groups");
+                    System.Diagnostics.Debug.WriteLine($"LoadLayoutConfiguration: Loaded config - IsFirstRun: {_layoutConfig?.IsFirstRun}, Groups: {_layoutConfig?.Groups?.Count ?? 0}, Positions: {_layoutConfig?.AppPositions?.Count ?? 0}");
+                    
+                    if (_layoutConfig?.Groups != null)
+                    {
+                        foreach (var group in _layoutConfig.Groups)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  Loaded group '{group.Name}' with {group.AppIds.Count} apps");
+                        }
+                    }
                 }
                 else
                 {
+                    System.Diagnostics.Debug.WriteLine("LoadLayoutConfiguration: Config file does not exist, creating default for first run");
                     // Create default config for first run
                     _layoutConfig = new LayoutConfiguration
                     {
@@ -796,7 +703,7 @@ namespace SeroDesk.ViewModels
                 // Update config with current state
                 _layoutConfig.LastModified = DateTime.Now;
                 
-                // Save groups
+                // Save groups - use AppGroups collection directly, not DisplayItems
                 _layoutConfig.Groups = AppGroups.Select(group => new Models.SavedGroup
                 {
                     Id = group.Id,
@@ -804,12 +711,47 @@ namespace SeroDesk.ViewModels
                     AppIds = group.Apps.Select(app => app.Id ?? app.ExecutablePath ?? app.Name).ToList()
                 }).ToList();
                 
-                // Save app positions
+                System.Diagnostics.Debug.WriteLine($"SaveLayoutConfiguration: Saving {_layoutConfig.Groups.Count} groups");
+                foreach (var group in _layoutConfig.Groups)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  Group '{group.Name}' with {group.AppIds.Count} apps: {string.Join(", ", group.AppIds)}");
+                }
+                
+                // Save app positions - use a combination of DisplayItems and AllApplications
                 _layoutConfig.AppPositions = new List<Models.SavedAppPosition>();
                 int index = 0;
-                foreach (var item in DisplayItems)
+                
+                // If DisplayItems is populated (normal save), use it
+                if (DisplayItems.Count > 0)
                 {
-                    if (item is AppIcon app)
+                    foreach (var item in DisplayItems)
+                    {
+                        if (item is AppIcon app)
+                        {
+                            var position = new Models.SavedAppPosition
+                            {
+                                AppId = app.Id ?? app.ExecutablePath ?? app.Name,
+                                AppPath = app.ExecutablePath ?? string.Empty,
+                                PageIndex = index / _itemsPerPage,
+                                Row = (index % _itemsPerPage) / 7,
+                                Column = index % 7,
+                                GroupId = app.GroupId
+                            };
+                            _layoutConfig.AppPositions.Add(position);
+                            index++;
+                        }
+                        else if (item is AppGroup)
+                        {
+                            // Groups are saved separately
+                            index++;
+                        }
+                    }
+                }
+                else
+                {
+                    // If DisplayItems is empty (first run), save from AllApplications
+                    System.Diagnostics.Debug.WriteLine("DisplayItems empty, saving positions from AllApplications");
+                    foreach (var app in AllApplications.Where(a => string.IsNullOrEmpty(a.GroupId)))
                     {
                         var position = new Models.SavedAppPosition
                         {
@@ -823,10 +765,11 @@ namespace SeroDesk.ViewModels
                         _layoutConfig.AppPositions.Add(position);
                         index++;
                     }
-                    else if (item is AppGroup)
+                    
+                    // Add group positions
+                    foreach (var group in AppGroups)
                     {
-                        // Groups are saved separately
-                        index++;
+                        index++; // Groups take up one position each
                     }
                 }
                 

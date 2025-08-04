@@ -73,13 +73,14 @@ namespace SeroDesk.ViewModels
         
         public void LoadDesktopIcons()
         {
-            Desktop.LoadDesktopIcons();
+            // Desktop icons are not used in this app - LaunchPad handles all apps
+            // Desktop.LoadDesktopIcons(); // DISABLED
         }
         
         public async void LoadAllAppsForSpringBoard()
         {
-            await Desktop.LoadAllApplicationsAsync();
-            // Also load for Launchpad
+            // Only load for Launchpad - Desktop icons are not used in this app
+            // await Desktop.LoadAllApplicationsAsync(); // DISABLED
             await Launchpad.LoadAllApplicationsAsync();
         }
         
