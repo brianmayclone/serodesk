@@ -202,7 +202,41 @@ namespace SeroDesk.ViewModels
             LoadWallpaper();
         }
         
+        private System.Windows.Threading.DispatcherTimer? _searchTimer;
+        private string _pendingSearchText = "";
+        
         public void FilterApplications(string searchText)
+        {
+            // If search text is empty, clear immediately (no debounce needed)
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                _searchTimer?.Stop();
+                _pendingSearchText = "";
+                PerformSearch("");
+                return;
+            }
+            
+            // Debounce search - only search after user stops typing for 300ms
+            _pendingSearchText = searchText;
+            
+            if (_searchTimer == null)
+            {
+                _searchTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(300)
+                };
+                _searchTimer.Tick += (s, e) =>
+                {
+                    _searchTimer.Stop();
+                    PerformSearch(_pendingSearchText);
+                };
+            }
+            
+            _searchTimer.Stop();
+            _searchTimer.Start();
+        }
+        
+        private void PerformSearch(string searchText)
         {
             if (string.IsNullOrWhiteSpace(searchText))
             {
@@ -214,15 +248,21 @@ namespace SeroDesk.ViewModels
                 // Show flat search results
                 DisplayItems.Clear();
                 
-                // Search in apps and groups
-                var filteredApps = AllApplications.Where(app => 
-                    app.Name.ToLowerInvariant().Contains(searchText.ToLowerInvariant()))
-                    .OrderBy(app => app.Name);
+                var searchLower = searchText.ToLowerInvariant();
                 
-                var filteredGroups = AppGroups.Where(group =>
-                    group.Name.ToLowerInvariant().Contains(searchText.ToLowerInvariant()) ||
-                    group.Apps.Any(app => app.Name.ToLowerInvariant().Contains(searchText.ToLowerInvariant())));
+                // Pre-filter apps once instead of multiple LINQ queries
+                var filteredApps = AllApplications
+                    .Where(app => app.Name.ToLowerInvariant().Contains(searchLower))
+                    .OrderBy(app => app.Name)
+                    .ToList(); // Materialize once
                 
+                var filteredGroups = AppGroups
+                    .Where(group => 
+                        group.Name.ToLowerInvariant().Contains(searchLower) ||
+                        group.Apps.Any(app => app.Name.ToLowerInvariant().Contains(searchLower)))
+                    .ToList(); // Materialize once
+                
+                // Add filtered results
                 foreach (var group in filteredGroups)
                 {
                     DisplayItems.Add(group);
@@ -233,6 +273,9 @@ namespace SeroDesk.ViewModels
                     DisplayItems.Add(app);
                 }
             }
+            
+            // Force UI update after search
+            OnPropertyChanged(nameof(DisplayItems));
         }
         
         private void UpdateDisplayItems()
@@ -545,6 +588,7 @@ namespace SeroDesk.ViewModels
         {
             var toolsList = new List<AppIcon>();
             var regularApps = new List<AppIcon>();
+            var folderGroups = new Dictionary<string, List<AppIcon>>();
             
             foreach (var app in apps)
             {
@@ -557,6 +601,20 @@ namespace SeroDesk.ViewModels
                 else
                 {
                     regularApps.Add(app);
+                    
+                    // Check for folder grouping - look for apps from same root folder
+                    if (!string.IsNullOrEmpty(app.ExecutablePath))
+                    {
+                        var rootFolder = GetRootInstallFolder(app.ExecutablePath);
+                        if (!string.IsNullOrEmpty(rootFolder))
+                        {
+                            if (!folderGroups.ContainsKey(rootFolder))
+                            {
+                                folderGroups[rootFolder] = new List<AppIcon>();
+                            }
+                            folderGroups[rootFolder].Add(app);
+                        }
+                    }
                 }
             }
             
@@ -578,7 +636,29 @@ namespace SeroDesk.ViewModels
                 System.Diagnostics.Debug.WriteLine($"Created Tools group with {toolsList.Count} apps");
             }
             
-            // Add regular apps
+            // Create folder-based groups for apps with multiple entries from same root
+            foreach (var folderGroup in folderGroups.Where(g => g.Value.Count >= 2))
+            {
+                var folderName = Path.GetFileName(folderGroup.Key);
+                var groupName = GetFriendlyGroupName(folderName, folderGroup.Value);
+                
+                var appGroup = new AppGroup(groupName)
+                {
+                    Id = $"folder-{folderName.ToLowerInvariant().Replace(" ", "-")}-auto"
+                };
+                
+                foreach (var app in folderGroup.Value)
+                {
+                    appGroup.AddApp(app);
+                    app.GroupId = appGroup.Id;
+                    regularApps.Remove(app); // Remove from regular apps since it's now grouped
+                }
+                
+                AppGroups.Add(appGroup);
+                System.Diagnostics.Debug.WriteLine($"Created folder group '{groupName}' with {folderGroup.Value.Count} apps");
+            }
+            
+            // Add remaining regular apps
             foreach (var app in regularApps.OrderBy(a => a.Name))
             {
                 AllApplications.Add(app);
@@ -776,6 +856,111 @@ namespace SeroDesk.ViewModels
             
             // Reload apps to trigger auto-categorization
             _ = LoadAllApplicationsAsync();
+        }
+        
+        private string? GetRootInstallFolder(string executablePath)
+        {
+            try
+            {
+                var directory = Path.GetDirectoryName(executablePath);
+                if (string.IsNullOrEmpty(directory))
+                    return null;
+                
+                // Look for common install root patterns
+                var pathParts = directory.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+                
+                // Check for Program Files patterns
+                if (pathParts.Length >= 3)
+                {
+                    for (int i = 0; i < pathParts.Length - 1; i++)
+                    {
+                        if (pathParts[i].Equals("Program Files", StringComparison.OrdinalIgnoreCase) ||
+                            pathParts[i].Equals("Program Files (x86)", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Return the next folder as the root install folder
+                            if (i + 1 < pathParts.Length)
+                            {
+                                var rootPath = string.Join(Path.DirectorySeparatorChar.ToString(), 
+                                    pathParts.Take(i + 2));
+                                return Path.GetPathRoot(executablePath) + rootPath;
+                            }
+                        }
+                    }
+                }
+                
+                // Check for other common install locations
+                var commonRoots = new[] { "Microsoft Visual Studio", "JetBrains", "Google", "Mozilla", "Adobe" };
+                foreach (var root in commonRoots)
+                {
+                    var rootIndex = Array.FindIndex(pathParts, p => 
+                        p.Contains(root, StringComparison.OrdinalIgnoreCase));
+                    if (rootIndex >= 0 && rootIndex < pathParts.Length - 1)
+                    {
+                        var rootPath = string.Join(Path.DirectorySeparatorChar.ToString(), 
+                            pathParts.Take(rootIndex + 1));
+                        return Path.GetPathRoot(executablePath) + rootPath;
+                    }
+                }
+                
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        
+        private string GetFriendlyGroupName(string folderName, List<AppIcon> apps)
+        {
+            // Create friendly names for common software suites
+            var friendlyNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "Microsoft Visual Studio", "Visual Studio" },
+                { "Visual Studio", "Visual Studio" },
+                { "JetBrains", "JetBrains" },
+                { "Google", "Google Apps" },
+                { "Mozilla", "Mozilla" },
+                { "Adobe", "Adobe Creative Suite" },
+                { "Microsoft Office", "Microsoft Office" },
+                { "Office", "Microsoft Office" }
+            };
+            
+            // Check if folder name matches any friendly names
+            foreach (var friendly in friendlyNames)
+            {
+                if (folderName.Contains(friendly.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return friendly.Value;
+                }
+            }
+            
+            // If no friendly name found, try to detect from app names
+            var appNames = apps.Select(a => a.Name).ToList();
+            
+            // Check for Visual Studio pattern
+            if (appNames.Any(name => name.Contains("Visual Studio", StringComparison.OrdinalIgnoreCase)))
+            {
+                return "Visual Studio";
+            }
+            
+            // Check for Office pattern
+            if (appNames.Any(name => name.Contains("Word", StringComparison.OrdinalIgnoreCase) ||
+                                   name.Contains("Excel", StringComparison.OrdinalIgnoreCase) ||
+                                   name.Contains("PowerPoint", StringComparison.OrdinalIgnoreCase)))
+            {
+                return "Microsoft Office";
+            }
+            
+            // Check for Adobe pattern
+            if (appNames.Any(name => name.Contains("Photoshop", StringComparison.OrdinalIgnoreCase) ||
+                                   name.Contains("Illustrator", StringComparison.OrdinalIgnoreCase) ||
+                                   name.Contains("Premiere", StringComparison.OrdinalIgnoreCase)))
+            {
+                return "Adobe Creative Suite";
+            }
+            
+            // Default: use folder name
+            return folderName;
         }
     }
 }

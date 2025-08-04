@@ -110,5 +110,37 @@
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
                 Visibility="Collapsed"/>
+        
+        <!-- Delete Button (iOS-style X) -->
+        <Button x:Name="DeleteButton"
+                Width="24" Height="24"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                Margin="0,-5,0,0"
+                Background="#FF3B30"
+                BorderThickness="2"
+                BorderBrush="White"
+                Visibility="Collapsed"
+                Click="DeleteButton_Click"
+                Cursor="Hand">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="12">
+                        <TextBlock Text="✕"
+                                  Foreground="White"
+                                  FontSize="12"
+                                  FontWeight="Bold"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Button.Template>
+            <Button.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="4" Opacity="0.5" ShadowDepth="1"/>
+            </Button.Effect>
+        </Button>
     </Grid>
 </UserControl>

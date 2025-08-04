@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
@@ -12,8 +13,10 @@ namespace SeroDesk.Views
     {
         private DispatcherTimer _mouseTrackingTimer;
         private DispatcherTimer _hideTimer;
+        private DispatcherTimer _desktopCheckTimer;
         private bool _isVisible = true;
         private bool _isAnimating = false;
+        private bool _isDesktopActive = false;
         private const int DOCK_HEIGHT = 90;
         private const int HIDDEN_POSITION_OFFSET = 75; // How much to hide (leave small strip visible)
         
@@ -36,6 +39,12 @@ namespace SeroDesk.Views
                 Interval = TimeSpan.FromSeconds(2) // Hide after 2 seconds of no mouse activity
             };
             _hideTimer.Tick += HideTimer_Tick;
+            
+            _desktopCheckTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500) // Check desktop state every 500ms
+            };
+            _desktopCheckTimer.Tick += DesktopCheckTimer_Tick;
         }
 
         private void DockWindow_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -55,9 +64,10 @@ namespace SeroDesk.Views
             // Initialize the dock component
             Dock.Initialize();
             
-            // Start mouse tracking
+            // Start mouse tracking and desktop checking
             _mouseTrackingTimer.Start();
             _hideTimer.Start();
+            _desktopCheckTimer.Start();
         }
         
         private void PositionDockAtBottom()
@@ -100,13 +110,16 @@ namespace SeroDesk.Views
                     ShowDock();
                 }
                 
-                // Reset hide timer while mouse is in dock area
-                _hideTimer.Stop();
-                _hideTimer.Start();
+                // Reset hide timer while mouse is in dock area (unless desktop is active)
+                if (!_isDesktopActive)
+                {
+                    _hideTimer.Stop();
+                    _hideTimer.Start();
+                }
             }
-            else if (_isVisible)
+            else if (_isVisible && !_isDesktopActive)
             {
-                // Mouse is away from dock area - start hide timer if not already running
+                // Mouse is away from dock area and desktop is not active - start hide timer if not already running
                 if (!_hideTimer.IsEnabled)
                 {
                     _hideTimer.Start();
@@ -116,6 +129,13 @@ namespace SeroDesk.Views
         
         private void HideTimer_Tick(object? sender, EventArgs e)
         {
+            // Don't hide if desktop is active - dock should stay visible on desktop
+            if (_isDesktopActive)
+            {
+                _hideTimer.Stop();
+                return;
+            }
+            
             // Double-check that mouse is not over dock before hiding
             if (_isVisible && !_isAnimating && !IsMouseOverDock())
             {
@@ -129,7 +149,6 @@ namespace SeroDesk.Views
                 }
             }
             
-            _hideTimer.Stop();
             _hideTimer.Stop();
         }
         
@@ -246,10 +265,85 @@ namespace SeroDesk.Views
         /// </summary>
         public bool IsDockVisible => _isVisible;
         
+        private void DesktopCheckTimer_Tick(object? sender, EventArgs e)
+        {
+            var wasDesktopActive = _isDesktopActive;
+            // Check both desktop activity AND dock's internal desktop mode state
+            _isDesktopActive = IsDesktopActive() && Dock.IsInDesktopMode;
+            
+            // If desktop state changed, update dock visibility accordingly
+            if (wasDesktopActive != _isDesktopActive)
+            {
+                System.Diagnostics.Debug.WriteLine($"Desktop state changed: {_isDesktopActive}");
+                
+                if (_isDesktopActive)
+                {
+                    // Desktop became active - show dock and stop hide timer
+                    _hideTimer.Stop();
+                    if (!_isVisible)
+                    {
+                        ShowDock();
+                    }
+                }
+                else
+                {
+                    // Desktop is no longer active - resume normal auto-hide behavior
+                    if (_isVisible && !IsMouseOverDock())
+                    {
+                        _hideTimer.Start();
+                    }
+                }
+            }
+        }
+        
+        private bool IsDesktopActive()
+        {
+            try
+            {
+                var foregroundWindow = NativeMethods.GetForegroundWindow();
+                if (foregroundWindow == IntPtr.Zero)
+                    return false;
+                
+                // Get window class name
+                var className = new System.Text.StringBuilder(256);
+                NativeMethods.GetClassName(foregroundWindow, className, className.Capacity);
+                var classNameStr = className.ToString();
+                
+                // Check for desktop window classes
+                var desktopClasses = new[] { "Progman", "WorkerW", "SeroDesk.MainWindow", "Shell_TrayWnd" };
+                if (desktopClasses.Any(dc => classNameStr.Contains(dc, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+                
+                // Get window title
+                var titleLength = NativeMethods.GetWindowTextLength(foregroundWindow);
+                if (titleLength == 0)
+                {
+                    // Windows with no title might be desktop-related
+                    return classNameStr.Equals("Progman", StringComparison.OrdinalIgnoreCase) ||
+                           classNameStr.Equals("WorkerW", StringComparison.OrdinalIgnoreCase);
+                }
+                
+                var title = new System.Text.StringBuilder(titleLength + 1);
+                NativeMethods.GetWindowText(foregroundWindow, title, title.Capacity);
+                var titleStr = title.ToString();
+                
+                // Check for our own main window or desktop-related titles
+                return titleStr.Contains("SeroDesk", StringComparison.OrdinalIgnoreCase) ||
+                       string.IsNullOrEmpty(titleStr);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
         protected override void OnClosed(EventArgs e)
         {
             _mouseTrackingTimer?.Stop();
             _hideTimer?.Stop();
+            _desktopCheckTimer?.Stop();
             base.OnClosed(e);
         }
         

@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using SeroDesk.Models;
 using SeroDesk.ViewModels;
 
@@ -20,6 +21,9 @@ namespace SeroDesk.Views
         private Point _dragStartPoint;
         private Transform? _originalTransform;
         private bool _hasMovedDuringTouch = false;
+        private DispatcherTimer? _longPressTimer;
+        private Point _longPressStartPoint;
+        private bool _longPressTriggered = false;
         
         public SeroIconView()
         {
@@ -36,6 +40,13 @@ namespace SeroDesk.Views
             this.ManipulationStarting += OnManipulationStarting;
             this.ManipulationDelta += OnManipulationDelta;
             this.ManipulationCompleted += OnManipulationCompleted;
+            
+            // Initialize long press timer
+            _longPressTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(800) // 800ms for long press
+            };
+            _longPressTimer.Tick += LongPressTimer_Tick;
         }
         
         // Dependency Properties
@@ -136,6 +147,10 @@ namespace SeroDesk.Views
         private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             _dragStartPoint = e.GetPosition(this);
+            _longPressStartPoint = _dragStartPoint;
+            _longPressTriggered = false;
+            _longPressTimer?.Start();
+            
             this.CaptureMouse();
             e.Handled = true;
         }
@@ -147,21 +162,35 @@ namespace SeroDesk.Views
                 Point currentPosition = e.GetPosition(this);
                 Vector diff = currentPosition - _dragStartPoint;
                 
+                // Cancel long press if moved too much
+                if (Math.Abs(diff.X) > 10 || Math.Abs(diff.Y) > 10)
+                {
+                    _longPressTimer?.Stop();
+                }
+                
+                // Check if we're in edit mode
+                var deleteButton = this.FindName("DeleteButton") as Button;
+                bool isInEditMode = deleteButton?.Visibility == Visibility.Visible;
+                
                 if (!_isDragging && (Math.Abs(diff.X) > 5 || Math.Abs(diff.Y) > 5))
                 {
-                    // Start dragging
-                    _isDragging = true;
-                    StartDragVisual();
-                    
-                    var dragEventArgs = new IconDragEventArgs
+                    // Only start dragging if in edit mode or if long press was triggered
+                    if (isInEditMode || _longPressTriggered)
                     {
-                        IconView = this,
-                        Position = e.GetPosition(this.Parent as UIElement),
-                        AppIcon = this.AppIcon,
-                        AppGroup = this.AppGroup,
-                        IsGroup = this.IsGroup
-                    };
-                    DragStarted?.Invoke(this, dragEventArgs);
+                        // Start dragging
+                        _isDragging = true;
+                        StartDragVisual();
+                        
+                        var dragEventArgs = new IconDragEventArgs
+                        {
+                            IconView = this,
+                            Position = e.GetPosition(this.Parent as UIElement),
+                            AppIcon = this.AppIcon,
+                            AppGroup = this.AppGroup,
+                            IsGroup = this.IsGroup
+                        };
+                        DragStarted?.Invoke(this, dragEventArgs);
+                    }
                 }
                 
                 if (_isDragging)
@@ -184,6 +213,7 @@ namespace SeroDesk.Views
         {
             if (this.IsMouseCaptured)
             {
+                _longPressTimer?.Stop();
                 this.ReleaseMouseCapture();
                 
                 if (_isDragging)
@@ -203,12 +233,13 @@ namespace SeroDesk.Views
                     
                     _isDragging = false;
                 }
-                else
+                else if (!_longPressTriggered)
                 {
-                    // Simple click
+                    // Simple click (not a long press)
                     OnIconClicked();
                 }
                 
+                _longPressTriggered = false;
                 e.Handled = true;
             }
         }
@@ -224,6 +255,16 @@ namespace SeroDesk.Views
         
         private void OnIconClicked()
         {
+            // Check if we're in edit mode by looking at delete button visibility
+            var deleteButton = this.FindName("DeleteButton") as Button;
+            bool isInEditMode = deleteButton?.Visibility == Visibility.Visible;
+            
+            // Don't launch apps in edit mode
+            if (isInEditMode)
+            {
+                return;
+            }
+            
             var clickEventArgs = new IconClickEventArgs
             {
                 IconView = this,
@@ -239,35 +280,63 @@ namespace SeroDesk.Views
         private void OnManipulationStarting(object? sender, ManipulationStartingEventArgs e)
         {
             e.ManipulationContainer = this.Parent as UIElement;
+            _longPressStartPoint = new Point(0, 0); // Will be set from first delta
+            _longPressTriggered = false;
+            _longPressTimer?.Start();
             e.Handled = true;
         }
         
         private void OnManipulationDelta(object? sender, ManipulationDeltaEventArgs e)
         {
+            // Set start point from first delta if not set
+            if (_longPressStartPoint.X == 0 && _longPressStartPoint.Y == 0)
+            {
+                _longPressStartPoint = e.ManipulationOrigin;
+            }
+            
+            // Cancel long press if moved too much
+            var deltaFromStart = new Point(
+                Math.Abs(e.ManipulationOrigin.X - _longPressStartPoint.X),
+                Math.Abs(e.ManipulationOrigin.Y - _longPressStartPoint.Y)
+            );
+            
+            if (deltaFromStart.X > 10 || deltaFromStart.Y > 10)
+            {
+                _longPressTimer?.Stop();
+            }
+            
+            // Check if we're in edit mode
+            var deleteButton = this.FindName("DeleteButton") as Button;
+            bool isInEditMode = deleteButton?.Visibility == Visibility.Visible;
+            
             if (!_isDragging && (Math.Abs(e.CumulativeManipulation.Translation.X) > 10 || 
                                 Math.Abs(e.CumulativeManipulation.Translation.Y) > 10))
             {
-                // Start dragging with manipulation
-                _isDragging = true;
-                _hasMovedDuringTouch = true;
-                StartDragVisual();
-                
-                // Use the actual manipulation position relative to parent
-                var parentElement = this.Parent as UIElement;
-                var containerElement = e.ManipulationContainer as UIElement;
-                Point positionInParent = containerElement != null && parentElement != null ? 
-                    containerElement.TranslatePoint(e.ManipulationOrigin, parentElement) : 
-                    e.ManipulationOrigin;
-                
-                var dragEventArgs = new IconDragEventArgs
+                // Only start dragging if in edit mode or if long press was triggered
+                if (isInEditMode || _longPressTriggered)
                 {
-                    IconView = this,
-                    Position = positionInParent,
-                    AppIcon = this.AppIcon,
-                    AppGroup = this.AppGroup,
-                    IsGroup = this.IsGroup
-                };
-                DragStarted?.Invoke(this, dragEventArgs);
+                    // Start dragging with manipulation
+                    _isDragging = true;
+                    _hasMovedDuringTouch = true;
+                    StartDragVisual();
+                    
+                    // Use the actual manipulation position relative to parent
+                    var parentElement = this.Parent as UIElement;
+                    var containerElement = e.ManipulationContainer as UIElement;
+                    Point positionInParent = containerElement != null && parentElement != null ? 
+                        containerElement.TranslatePoint(e.ManipulationOrigin, parentElement) : 
+                        e.ManipulationOrigin;
+                    
+                    var dragEventArgs = new IconDragEventArgs
+                    {
+                        IconView = this,
+                        Position = positionInParent,
+                        AppIcon = this.AppIcon,
+                        AppGroup = this.AppGroup,
+                        IsGroup = this.IsGroup
+                    };
+                    DragStarted?.Invoke(this, dragEventArgs);
+                }
             }
             
             if (_isDragging)
@@ -301,6 +370,8 @@ namespace SeroDesk.Views
         
         private void OnManipulationCompleted(object? sender, ManipulationCompletedEventArgs e)
         {
+            _longPressTimer?.Stop();
+            
             if (_isDragging)
             {
                 // End dragging - calculate final position from origin + translation
@@ -329,14 +400,15 @@ namespace SeroDesk.Views
                 
                 _isDragging = false;
             }
-            else if (!_hasMovedDuringTouch)
+            else if (!_hasMovedDuringTouch && !_longPressTriggered)
             {
-                // Only trigger click if there was NO movement during touch
+                // Only trigger click if there was NO movement and it wasn't a long press
                 OnIconClicked();
             }
             
-            // Reset movement flag for next touch sequence
+            // Reset flags for next touch sequence
             _hasMovedDuringTouch = false;
+            _longPressTriggered = false;
             
             e.Handled = true;
         }
@@ -676,6 +748,118 @@ namespace SeroDesk.Views
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to show properties: {ex.Message}");
+            }
+        }
+        
+        // Long Press Event Handler
+        private void LongPressTimer_Tick(object? sender, EventArgs e)
+        {
+            _longPressTimer?.Stop();
+            _longPressTriggered = true;
+            
+            System.Diagnostics.Debug.WriteLine($"Long press detected on {AppIcon?.Name ?? AppGroup?.Name}");
+            
+            // Find the parent SeroLaunchpad to trigger edit mode
+            var parent = this.Parent;
+            while (parent != null && !(parent is SeroLaunchpad))
+            {
+                parent = VisualTreeHelper.GetParent(parent) as FrameworkElement;
+            }
+            
+            if (parent is SeroLaunchpad launchpad && !launchpad.IsEditMode)
+            {
+                // Trigger edit mode on the launchpad
+                try
+                {
+                    var enterEditModeMethod = typeof(SeroLaunchpad).GetMethod("EnterEditMode", 
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    enterEditModeMethod?.Invoke(launchpad, null);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error triggering edit mode: {ex.Message}");
+                }
+            }
+            
+            // Provide haptic feedback
+            try
+            {
+                System.Media.SystemSounds.Asterisk.Play();
+            }
+            catch { }
+        }
+        
+        // Edit Mode Methods
+        public void SetEditMode(bool isEditMode)
+        {
+            var deleteButton = this.FindName("DeleteButton") as Button;
+            if (deleteButton != null)
+            {
+                deleteButton.Visibility = isEditMode ? Visibility.Visible : Visibility.Collapsed;
+            }
+            
+            // Disable click handling during edit mode
+            this.IsHitTestVisible = true; // Keep visible for delete button
+            
+            if (isEditMode)
+            {
+                // Visual feedback for edit mode
+                this.Opacity = 0.9;
+            }
+            else
+            {
+                this.Opacity = 1.0;
+            }
+        }
+        
+        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Show confirmation dialog
+            var result = MessageBox.Show(
+                $"Are you sure you want to remove '{(IsGroup ? AppGroup?.Name : AppIcon?.Name)}' from the desktop?", 
+                "Remove App", 
+                MessageBoxButton.YesNo, 
+                MessageBoxImage.Question);
+                
+            if (result == MessageBoxResult.Yes)
+            {
+                RemoveFromDesktop();
+            }
+        }
+        
+        private void RemoveFromDesktop()
+        {
+            try
+            {
+                // Find the parent SeroLaunchpad to access ViewModel
+                var parent = this.Parent;
+                while (parent != null && !(parent is SeroLaunchpad))
+                {
+                    parent = VisualTreeHelper.GetParent(parent) as FrameworkElement;
+                }
+                
+                if (parent is SeroLaunchpad launchpad && launchpad.DataContext is LaunchpadViewModel viewModel)
+                {
+                    if (IsGroup && AppGroup != null)
+                    {
+                        // Remove group - apps will be moved back to main screen
+                        var apps = AppGroup.Apps.ToList();
+                        foreach (var app in apps)
+                        {
+                            viewModel.RemoveAppFromGroup(app);
+                        }
+                    }
+                    else if (AppIcon != null)
+                    {
+                        // Remove individual app
+                        viewModel.RemoveApplication(AppIcon);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error removing from desktop: {ex.Message}");
+                MessageBox.Show("Failed to remove app from desktop.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

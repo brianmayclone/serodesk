@@ -50,8 +50,6 @@ namespace SeroDesk.Platform
         public static int GetDpi(DependencyObject obj) => (int)obj.GetValue(DpiProperty);
         public static void SetDpi(DependencyObject obj, int value) => obj.SetValue(DpiProperty, value);
 
-        private static RenderTargetBitmap? cachedBitmap;
-
         private static void OnEnableBlurChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is Border border && e.NewValue is bool isEnabled)
@@ -187,7 +185,8 @@ namespace SeroDesk.Platform
             var baseOpacity = border.Opacity;
 
             // Get the root content of the window (this is typically the main content container)
-            var rootVisual = window.Content as Visual;
+            var rootVisual = window?.Content as Visual;
+            if (rootVisual == null) return;
 
             // Hide the child component temporarily
             if (border is UIElement uiElementToExclude)
@@ -197,6 +196,7 @@ namespace SeroDesk.Platform
 
             // Get the dimensions of the content area
             var transform = border.TransformToVisual(window); // Transform from border to window coordinates
+            if (transform == null) return;
             var borderPosition = transform.Transform(new Point(0, 0)); // Get the top-left position of the border relative to the window
 
             // Calculate the size of the RenderTargetBitmap based on the border's size

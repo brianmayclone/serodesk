@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using SeroDesk.Core;
 using SeroDesk.Models;
 using SeroDesk.ViewModels;
@@ -18,6 +19,7 @@ namespace SeroDesk.Views
     public partial class SeroLaunchpad : UserControl
     {
         private LaunchpadViewModel? _viewModel;
+        private bool _isEditMode = false;
         
         public SeroLaunchpad()
         {
@@ -76,27 +78,51 @@ namespace SeroDesk.Views
         
         private void LaunchpadGrid_ManipulationCompleted(object sender, ManipulationCompletedEventArgs e)
         {
-            // Handle manipulation completed
+            // If this was a tap on empty space and in edit mode, exit edit mode
+            if (_isEditMode)
+            {
+                ExitEditMode();
+            }
         }
         
         public void Initialize()
         {
-            _viewModel = new LaunchpadViewModel();
-            DataContext = _viewModel;
+            // Only create a new ViewModel if DataContext is not already set
+            // (to allow MainWindow to share its ViewModel)
+            if (DataContext == null)
+            {
+                System.Diagnostics.Debug.WriteLine("SeroLaunchpad: Creating NEW ViewModel (DataContext was null)");
+                _viewModel = new LaunchpadViewModel();
+                DataContext = _viewModel;
+            }
+            else if (DataContext is LaunchpadViewModel existingViewModel)
+            {
+                System.Diagnostics.Debug.WriteLine($"SeroLaunchpad: Using EXISTING ViewModel with {existingViewModel.AllApplications.Count} apps");
+                _viewModel = existingViewModel;
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"SeroLaunchpad: DataContext is not LaunchpadViewModel: {DataContext?.GetType()}");
+                _viewModel = new LaunchpadViewModel();
+                DataContext = _viewModel;
+            }
         }
+        
+        private bool _isLoading = false;
         
         public async void Show()
         {
+            if (Visibility == Visibility.Visible)
+                return; // Already visible, prevent multiple calls
+                
             Visibility = Visibility.Visible;
             
-            // Load apps on first show
-            if (_viewModel != null && _viewModel.AllApplications.Count == 0)
-            {
-                await _viewModel.LoadAllApplicationsAsync();
-            }
+            // Do NOT load apps in Show() - apps should be loaded by MainWindow
+            // Show() should only display the LaunchPad, not load data
+            System.Diagnostics.Debug.WriteLine($"SeroLaunchpad.Show(): ViewModel has {_viewModel?.AllApplications.Count ?? 0} apps, Loading: {_isLoading}");
             
             // Ensure pages are created after layout is updated
-            _ = this.Dispatcher.BeginInvoke(new Action(() =>
+            this.Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (_viewModel != null)
                 {
@@ -130,8 +156,12 @@ namespace SeroDesk.Views
             scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, zoomIn);
             LaunchpadGrid.BeginAnimation(OpacityProperty, fadeIn);
             
-            // Focus search box
-            SearchBox.Focus();
+            // Focus search box - delayed and forced
+            _ = this.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                SearchBox.Focus();
+                Keyboard.Focus(SearchBox);
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
         }
         
         public void Hide()
@@ -201,8 +231,106 @@ namespace SeroDesk.Views
             {
                 _viewModel.FilterApplications(SearchBox.Text);
                 
-                // Recreate icon views to show search results
-                CreateIconViews();
+                // For instant feedback, immediately update visibility while debounced search runs
+                UpdateIconVisibility(SearchBox.Text);
+            }
+        }
+        
+        private void UpdateIconVisibility(string searchText)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                // Restore all cached icons to their original positions
+                foreach (var cachedIcon in _iconCache.Values)
+                {
+                    if (_originalPositions.TryGetValue(cachedIcon, out var originalPos))
+                    {
+                        Canvas.SetLeft(cachedIcon, originalPos.X);
+                        Canvas.SetTop(cachedIcon, originalPos.Y);
+                        cachedIcon.Visibility = Visibility.Visible;
+                    }
+                }
+                return;
+            }
+            
+            // Hide all icons first
+            foreach (var cachedIcon in _iconCache.Values)
+            {
+                cachedIcon.Visibility = Visibility.Collapsed;
+            }
+            
+            // Find matching icons and reposition them
+            var searchLower = searchText.ToLowerInvariant();
+            var matchingIcons = new List<SeroIconView>();
+            
+            foreach (var kvp in _iconCache)
+            {
+                var item = kvp.Key;
+                var iconView = kvp.Value;
+                
+                bool matches = false;
+                if (item is AppIcon app)
+                {
+                    matches = app.Name.ToLowerInvariant().Contains(searchLower);
+                }
+                else if (item is AppGroup group)
+                {
+                    matches = group.Name.ToLowerInvariant().Contains(searchLower) ||
+                             group.Apps.Any(a => a.Name.ToLowerInvariant().Contains(searchLower));
+                }
+                
+                if (matches)
+                {
+                    matchingIcons.Add(iconView);
+                }
+            }
+            
+            // Reposition matching icons in a grid starting from top-left
+            RepositionSearchResults(matchingIcons);
+        }
+        
+        private (double canvasWidth, double canvasHeight, int columnsPerPage, int rowsPerPage, double horizontalSpacing, double verticalSpacing, double iconWidth, double iconHeight) GetGridDimensions()
+        {
+            var canvasWidth = IconCanvas?.ActualWidth ?? 1600;
+            var canvasHeight = IconCanvas?.ActualHeight ?? 600;
+            
+            // Ensure we have sane values BEFORE any calculations
+            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
+            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
+            
+            var iconWidth = 90.0;
+            var iconHeight = 120.0;
+            var columnsPerPage = 7; // Fixed grid layout
+            var rowsPerPage = 5;
+            
+            // Calculate spacing with validated dimensions
+            var horizontalSpacing = canvasWidth / columnsPerPage;
+            var verticalSpacing = canvasHeight / rowsPerPage;
+            
+            return (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight);
+        }
+        
+        private void RepositionSearchResults(List<SeroIconView> matchingIcons)
+        {
+            if (IconCanvas == null || matchingIcons.Count == 0) return;
+            
+            // Use same grid dimensions as CreateIconViews
+            var (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
+            
+            // Position icons in grid starting from top-left
+            for (int i = 0; i < matchingIcons.Count; i++)
+            {
+                var iconView = matchingIcons[i];
+                var row = i / columnsPerPage;
+                var col = i % columnsPerPage;
+                
+                var x = col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
+                var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                
+                Canvas.SetLeft(iconView, x);
+                Canvas.SetTop(iconView, y);
+                iconView.GridPosition = new Point(col, row);
+                iconView.Visibility = Visibility.Visible;
             }
         }
         
@@ -789,8 +917,8 @@ namespace SeroDesk.Views
         
         private void IconCanvas_ManipulationDelta(object sender, ManipulationDeltaEventArgs e)
         {
-            // Only handle page swiping if not dragging an icon
-            if (_draggedIcon == null)
+            // Only handle page swiping if not dragging an icon and not in edit mode
+            if (_draggedIcon == null && CanNavigatePages)
             {
                 // Handle horizontal swiping for page navigation
                 var translation = e.CumulativeManipulation.Translation.X;
@@ -826,35 +954,28 @@ namespace SeroDesk.Views
         
         private void UpdateSwipeVisualFeedback(double translation)
         {
-            // Add subtle visual feedback for page swiping
-            var translateTransform = IconCanvas?.RenderTransform as TranslateTransform;
-            if (translateTransform == null && IconCanvas != null)
+            // Visual feedback disabled to prevent overlapping pages bug
+            // Instead we'll use opacity changes for subtle feedback
+            if (IconCanvas != null)
             {
-                translateTransform = new TranslateTransform();
-                IconCanvas.RenderTransform = translateTransform;
-            }
-            
-            if (translateTransform != null)
-            {
-                // Limit the translation for rubber band effect
-                var maxTranslate = 50;
-                var limitedTranslation = Math.Max(-maxTranslate, Math.Min(maxTranslate, translation * 0.3));
-                translateTransform.X = limitedTranslation;
+                var swipeProgress = Math.Abs(translation) / 150.0; // Normalize to 0-1
+                var opacity = Math.Max(0.7, 1.0 - (swipeProgress * 0.3));
+                IconCanvas.Opacity = opacity;
             }
         }
         
         private void ResetSwipeVisualFeedback()
         {
-            var translateTransform = IconCanvas?.RenderTransform as TranslateTransform;
-            if (translateTransform != null)
+            // Reset opacity back to normal
+            if (IconCanvas != null)
             {
                 var resetAnimation = new DoubleAnimation
                 {
-                    To = 0,
+                    To = 1.0,
                     Duration = TimeSpan.FromMilliseconds(200),
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
                 };
-                translateTransform.BeginAnimation(TranslateTransform.XProperty, resetAnimation);
+                IconCanvas.BeginAnimation(UIElement.OpacityProperty, resetAnimation);
             }
         }
         
@@ -909,52 +1030,44 @@ namespace SeroDesk.Views
                 _isSwipeInProgress = true;
             }
             
-            // Visual feedback during swipe
+            // Simple visual feedback without transforms
             var translation = e.CumulativeManipulation.Translation.X;
-            var pageWidth = IconCanvas?.ActualWidth ?? 1600;
-            
-            // Calculate current offset with swipe feedback
-            var currentOffset = -(_viewModel?.CurrentPage ?? 0) * pageWidth;
-            var swipeOffset = Math.Max(-pageWidth * 0.3, Math.Min(pageWidth * 0.3, translation));
-            
-            // Apply transform for swipe preview
-            var translateTransform = IconCanvas?.RenderTransform as TranslateTransform;
-            if (translateTransform == null && IconCanvas != null)
-            {
-                translateTransform = new TranslateTransform();
-                IconCanvas.RenderTransform = translateTransform;
-            }
-            
-            if (translateTransform != null)
-            {
-                translateTransform.X = currentOffset + swipeOffset;
-            }
+            UpdateSwipeVisualFeedback(translation);
         }
         
         private void SeroLaunchpad_ManipulationCompleted(object? sender, ManipulationCompletedEventArgs e)
         {
             _isSwipeInProgress = false;
             
-            var swipeDistance = e.TotalManipulation.Translation.X;
-            var swipeThreshold = 100; // Minimum distance for page change
-            
-            if (_viewModel != null)
+            // Only allow page navigation if not in edit mode
+            if (CanNavigatePages)
             {
-                if (swipeDistance > swipeThreshold)
+                var swipeDistance = e.TotalManipulation.Translation.X;
+                var swipeThreshold = 100; // Minimum distance for page change
+                
+                if (_viewModel != null)
                 {
-                    // Swipe right - go to previous page
-                    _viewModel.PreviousPage();
+                    if (swipeDistance > swipeThreshold)
+                    {
+                        // Swipe right - go to previous page
+                        _viewModel.PreviousPage();
+                    }
+                    else if (swipeDistance < -swipeThreshold)
+                    {
+                        // Swipe left - go to next page
+                        _viewModel.NextPage();
+                    }
+                    else
+                    {
+                        // Not enough swipe - return to current page
+                        UpdatePagesLayout();
+                    }
                 }
-                else if (swipeDistance < -swipeThreshold)
-                {
-                    // Swipe left - go to next page
-                    _viewModel.NextPage();
-                }
-                else
-                {
-                    // Not enough swipe - return to current page
-                    UpdatePagesLayout();
-                }
+            }
+            else
+            {
+                // In edit mode, just reset the layout
+                UpdatePagesLayout();
             }
         }
         
@@ -985,38 +1098,33 @@ namespace SeroDesk.Views
             }
         }
         
+        private Dictionary<object, SeroIconView> _iconCache = new Dictionary<object, SeroIconView>();
+        private Dictionary<SeroIconView, Point> _originalPositions = new Dictionary<SeroIconView, Point>();
+        
         private void CreateIconViews()
         {
             if (_viewModel == null || IconCanvas == null) return;
             
-            System.Diagnostics.Debug.WriteLine($"CreateIconViews: DisplayItems={_viewModel.DisplayItems.Count}, SearchText='{_viewModel.SearchText}'");
+            System.Diagnostics.Debug.WriteLine($"CreateIconViews: DisplayItems={_viewModel.DisplayItems.Count}, SearchText='{_viewModel.SearchText}' (Using cache: {_iconCache.Count} items)");
+            
+            // Hide all icons first
+            foreach (var cachedIcon in _iconCache.Values)
+            {
+                cachedIcon.Visibility = Visibility.Collapsed;
+            }
             
             // Only create views if we have items to display
             if (_viewModel.DisplayItems.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("No items to display, skipping CreateIconViews");
+                System.Diagnostics.Debug.WriteLine("No items to display, all icons hidden");
                 return;
             }
             
-            IconCanvas.Children.Clear();
+            // Don't clear canvas - reuse cached icons
             
-            // Calculate grid dimensions - ensure valid dimensions FIRST
-            var canvasWidth = IconCanvas.ActualWidth;
-            var canvasHeight = IconCanvas.ActualHeight;
-            
-            // Ensure we have sane values BEFORE any calculations
-            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
-            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
-            
-            var iconWidth = 90.0;
-            var iconHeight = 120.0;
-            var columnsPerPage = 7; // Reduced because icons are larger
-            var rowsPerPage = 5; // Reduced because icons are larger
+            // Use shared grid dimensions calculation
+            var (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
             var iconsPerPage = columnsPerPage * rowsPerPage;
-            
-            // Calculate spacing with validated dimensions
-            var horizontalSpacing = canvasWidth / columnsPerPage;
-            var verticalSpacing = canvasHeight / rowsPerPage;
             
             System.Diagnostics.Debug.WriteLine($"Canvas: {canvasWidth}x{canvasHeight}, Spacing: {horizontalSpacing}x{verticalSpacing}");
             
@@ -1028,53 +1136,86 @@ namespace SeroDesk.Views
             {
                 SeroIconView? iconView = null;
                 
-                if (item is AppIcon app)
+                // Try to get from cache first
+                if (_iconCache.TryGetValue(item, out iconView))
                 {
-                    iconView = new SeroIconView
-                    {
-                        AppIcon = app,
-                        IsGroup = false
-                    };
-                    System.Diagnostics.Debug.WriteLine($"Creating SeroIconView for app {app.Name}, IconImage={app.IconImage != null}");
+                    System.Diagnostics.Debug.WriteLine($"Reusing cached SeroIconView for {(item is AppIcon app ? app.Name : ((AppGroup)item).Name)}");
                 }
-                else if (item is AppGroup group)
+                else
                 {
-                    iconView = new SeroIconView
+                    // Create new icon and cache it
+                    if (item is AppIcon app)
                     {
-                        AppGroup = group,
-                        IsGroup = true
-                    };
-                    System.Diagnostics.Debug.WriteLine($"Creating SeroIconView for group {group.Name}");
+                        iconView = new SeroIconView
+                        {
+                            AppIcon = app,
+                            IsGroup = false
+                        };
+                        System.Diagnostics.Debug.WriteLine($"Creating NEW SeroIconView for app {app.Name}, IconImage={app.IconImage != null}");
+                    }
+                    else if (item is AppGroup group)
+                    {
+                        iconView = new SeroIconView
+                        {
+                            AppGroup = group,
+                            IsGroup = true
+                        };
+                        System.Diagnostics.Debug.WriteLine($"Creating NEW SeroIconView for group {group.Name}");
+                    }
+                    
+                    if (iconView != null)
+                    {
+                        _iconCache[item] = iconView;
+                        IconCanvas.Children.Add(iconView);
+                    }
                 }
                 
                 if (iconView != null)
                 {
-                    // Calculate position
+                    // Calculate position - only show icons for current page
                     var pageIndex = iconIndex / iconsPerPage;
                     var localIndex = iconIndex % iconsPerPage;
                     var row = localIndex / columnsPerPage;
                     var col = localIndex % columnsPerPage;
                     
-                    var x = pageIndex * canvasWidth + col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
-                    var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                    // Only position icons that belong to the current page
+                    if (pageIndex == (_viewModel?.CurrentPage ?? 0))
+                    {
+                        var x = col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
+                        var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                        
+                        Canvas.SetLeft(iconView, x);
+                        Canvas.SetTop(iconView, y);
+                        iconView.GridPosition = new Point(col, row);
+                        iconView.Visibility = Visibility.Visible;
+                        
+                        // Store original position for search reset
+                        _originalPositions[iconView] = new Point(x, y);
+                    }
+                    else
+                    {
+                        // Hide icons that don't belong to current page
+                        iconView.Visibility = Visibility.Collapsed;
+                    }
                     
-                    Canvas.SetLeft(iconView, x);
-                    Canvas.SetTop(iconView, y);
-                    iconView.GridPosition = new Point(col, row);
+                    // Hook up event handlers (only if not already cached)
+                    if (!_iconCache.ContainsKey(item) || _iconCache[item] != iconView)
+                    {
+                        iconView.IconClicked += OnIconClicked;
+                        iconView.DragStarted += OnIconDragStarted;
+                        iconView.DragMoved += OnIconDragMoved;
+                        iconView.DragCompleted += OnIconDragCompleted;
+                        iconView.PinToDockRequested += OnPinToDockRequested;
+                        iconView.UnpinFromDockRequested += OnUnpinFromDockRequested;
+                    }
                     
-                    // Hook up event handlers
-                    iconView.IconClicked += OnIconClicked;
-                    iconView.DragStarted += OnIconDragStarted;
-                    iconView.DragMoved += OnIconDragMoved;
-                    iconView.DragCompleted += OnIconDragCompleted;
-                    iconView.PinToDockRequested += OnPinToDockRequested;
-                    iconView.UnpinFromDockRequested += OnUnpinFromDockRequested;
-                    
-                    IconCanvas.Children.Add(iconView);
+                    // Don't add to canvas again if already cached
                     iconIndex++;
                     
                     var name = (item is AppIcon a) ? a.Name : ((AppGroup)item).Name;
-                    System.Diagnostics.Debug.WriteLine($"Added {name} at position ({x}, {y})");
+                    var currentX = Canvas.GetLeft(iconView);
+                    var currentY = Canvas.GetTop(iconView);
+                    System.Diagnostics.Debug.WriteLine($"Added {name} at position ({currentX}, {currentY})");
                 }
             }
             
@@ -1085,25 +1226,8 @@ namespace SeroDesk.Views
         {
             if (_viewModel == null || IconCanvas == null) return;
             
-            var pageWidth = IconCanvas.ActualWidth > 0 ? IconCanvas.ActualWidth : 1600;
-            var currentPageOffset = -_viewModel.CurrentPage * pageWidth;
-            
-            // Animate to the current page
-            var translateTransform = IconCanvas.RenderTransform as TranslateTransform;
-            if (translateTransform == null)
-            {
-                translateTransform = new TranslateTransform();
-                IconCanvas.RenderTransform = translateTransform;
-            }
-            
-            var animation = new DoubleAnimation
-            {
-                To = currentPageOffset,
-                Duration = TimeSpan.FromMilliseconds(300),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            
-            translateTransform.BeginAnimation(TranslateTransform.XProperty, animation);
+            // Instead of using transforms, we'll recreate the icon views for the current page
+            CreateIconViews();
         }
         
         // Event handlers are now directly in XAML templates
@@ -1243,5 +1367,57 @@ namespace SeroDesk.Views
                 }
             }
         }
+        
+        // Edit Mode Methods
+        public void EnterEditMode()
+        {
+            if (_isEditMode) return;
+            
+            _isEditMode = true;
+            System.Diagnostics.Debug.WriteLine("Entering edit mode");
+            
+            // Update all icon views to show edit mode
+            foreach (SeroIconView icon in IconCanvas.Children.OfType<SeroIconView>())
+            {
+                icon.SetEditMode(true);
+                icon.StartWiggleAnimation();
+            }
+            
+            // Update search bar visibility (hide during edit mode)
+            SearchBar.Visibility = Visibility.Collapsed;
+            
+            // Provide haptic feedback if available
+            try
+            {
+                System.Media.SystemSounds.Asterisk.Play();
+            }
+            catch { }
+        }
+        
+        private void ExitEditMode()
+        {
+            if (!_isEditMode) return;
+            
+            _isEditMode = false;
+            System.Diagnostics.Debug.WriteLine("Exiting edit mode");
+            
+            // Update all icon views to exit edit mode
+            foreach (SeroIconView icon in IconCanvas.Children.OfType<SeroIconView>())
+            {
+                icon.SetEditMode(false);
+                icon.StopWiggleAnimation();
+            }
+            
+            // Show search bar again
+            SearchBar.Visibility = Visibility.Visible;
+            
+            // Save layout after edit mode
+            _viewModel?.SaveCurrentLayout();
+        }
+        
+        public bool IsEditMode => _isEditMode;
+        
+        // Override page navigation to prevent during edit mode
+        private bool CanNavigatePages => !_isEditMode;
     }
 }

@@ -191,12 +191,20 @@ namespace SeroDesk
             // Initialize DesktopLaunchpad (SpringBoard replacement)  
             // Note: DesktopLaunchpad gets DataContext from MainViewModel.Launchpad
             DesktopLaunchpad.DataContext = _viewModel.Launchpad;
+            DesktopLaunchpad.Initialize(); // Initialize AFTER setting DataContext
             
             // Create separate launchpad window (TopMost)
             _launchpadWindow = new LaunchpadWindow();
             
-            // Load apps for SpringBoard
+            // Share the same ViewModel between desktop and window launchpad (BEFORE loading apps)
+            _launchpadWindow.Launchpad.DataContext = _viewModel.Launchpad;
+            _launchpadWindow.Launchpad.Initialize(); // Initialize AFTER setting DataContext
+            
+            // Load apps for SpringBoard (async - will fill the shared ViewModel)
             _viewModel.LoadAllAppsForSpringBoard();
+            
+            // Initialize Windows key hook
+            WindowsKeyHook.Initialize(this);
         }
         
         private void FadeIn()
@@ -346,7 +354,8 @@ namespace SeroDesk
         
         public void ShowLaunchpad()
         {
-            _launchpadWindow?.ShowLaunchpad();
+            // Windows key should do EXACTLY the same as Home button in dock
+            _dockWindow?.Dock?.TriggerHomeButtonAction();
         }
         
         public void HideLaunchpad()
@@ -362,6 +371,33 @@ namespace SeroDesk
         private void MinimizeAllWindows()
         {
             WindowManager.Instance.MinimizeAllWindows();
+        }
+        
+        private void MinimizeOtherWindows()
+        {
+            // Store dock state to prevent it from being minimized
+            var dockWasVisible = _dockWindow?.IsVisible ?? false;
+            
+            // First minimize all windows (including SeroDesk temporarily)
+            WindowManager.Instance.MinimizeAllWindows();
+            
+            // Then immediately bring SeroDesk components back to foreground
+            this.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                // Restore SeroDesk windows
+                this.WindowState = WindowState.Maximized;
+                this.Show();
+                this.Activate();
+                
+                // ALWAYS restore dock - it must never be minimized
+                if (_dockWindow != null)
+                {
+                    _dockWindow.Show();
+                    _dockWindow.WindowState = WindowState.Normal;
+                    _dockWindow.Topmost = true; // Ensure dock stays on top
+                }
+                
+            }), System.Windows.Threading.DispatcherPriority.Normal);
         }
         
         public void ShowNotificationCenter()
@@ -394,6 +430,9 @@ namespace SeroDesk
         
         protected override void OnClosed(EventArgs e)
         {
+            // Clean up Windows key hook
+            WindowsKeyHook.Shutdown();
+            
             // Clean up dock window
             _dockWindow?.Close();
             _dockWindow = null;

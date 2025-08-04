@@ -10,8 +10,8 @@ namespace SeroDesk.Views
         {
             InitializeComponent();
             
-            // Initialize the launchpad
-            Launchpad.Initialize();
+            // Note: Do NOT initialize the launchpad here - DataContext is set from MainWindow
+            // to share the same ViewModel and prevent empty instances
             
             // Ensure this window is ALWAYS on top
             Loaded += LaunchpadWindow_Loaded;

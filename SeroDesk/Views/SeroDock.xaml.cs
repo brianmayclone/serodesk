@@ -17,6 +17,11 @@ namespace SeroDesk.Views
         private List<IntPtr> _minimizedWindows = new List<IntPtr>();
         private bool _isDesktopMode = false;
         
+        /// <summary>
+        /// Public property to check if dock is in desktop mode
+        /// </summary>
+        public bool IsInDesktopMode => _isDesktopMode;
+        
         public SeroDock()
         {
             InitializeComponent();
@@ -490,6 +495,17 @@ namespace SeroDesk.Views
                     // Show Desktop functionality - minimize all windows
                     MinimizeAllWindows();
                     _isDesktopMode = true;
+                    
+                    // Focus on LaunchPad search box after showing desktop
+                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        var mainWindow = Application.Current.MainWindow as MainWindow;
+                        if (mainWindow?.DesktopLaunchpad?.SearchBox != null)
+                        {
+                            mainWindow.DesktopLaunchpad.SearchBox.Focus();
+                            Keyboard.Focus(mainWindow.DesktopLaunchpad.SearchBox);
+                        }
+                    }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                 }
             }
             catch (Exception ex)
