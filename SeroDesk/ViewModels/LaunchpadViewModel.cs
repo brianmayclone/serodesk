@@ -1,9 +1,13 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Media;
+using Newtonsoft.Json;
 using SeroDesk.Models;
 using SeroDesk.Services;
 using SeroDesk.Platform;
@@ -19,8 +23,10 @@ namespace SeroDesk.ViewModels
         private string _searchText = string.Empty;
         private ImageBrush? _currentWallpaper;
         private int _currentPage = 0;
-        private int _itemsPerPage = 48; // 8x6 grid = 48 items per page
+        private int _itemsPerPage = 35; // 7x5 grid = 35 items per page (reduced for larger icons)
         private ObservableCollection<ObservableCollection<object>> _pages;
+        private LayoutConfiguration? _layoutConfig;
+        private string _configPath;
         
         public ObservableCollection<AppIcon> AllApplications
         {
@@ -92,8 +98,13 @@ namespace SeroDesk.ViewModels
             _appGroups = new ObservableCollection<AppGroup>();
             _pages = new ObservableCollection<ObservableCollection<object>>();
             
+            _configPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SeroDesk", "layout_config.json");
+            
             // Load Windows wallpaper
             LoadWallpaper();
+            LoadLayoutConfiguration();
         }
         
         public async Task LoadAllApplicationsAsync()
@@ -102,6 +113,8 @@ namespace SeroDesk.ViewModels
             {
                 AllApplications.Clear();
                 FilteredApplications.Clear();
+                
+                var allApps = new List<AppIcon>();
                 
                 // First, add some test apps to verify UI is working
                 var testApps = new[]
@@ -116,31 +129,51 @@ namespace SeroDesk.ViewModels
                 {
                     if (System.IO.File.Exists(testApp.ExecutablePath))
                     {
+                        testApp.Id = testApp.ExecutablePath;
                         testApp.IconImage = IconExtractor.GetIconForFile(testApp.ExecutablePath, true);
-                        AllApplications.Add(testApp);
-                        FilteredApplications.Add(testApp);
+                        allApps.Add(testApp);
                     }
                 }
                 
                 // Now try to load all installed applications
                 try
                 {
-                    var apps = await ApplicationScanner.ScanInstalledApplicationsAsync();
-                    
-                    foreach (var app in apps)
+                    var scannedApps = await ApplicationScanner.ScanInstalledApplicationsAsync();
+                    foreach (var app in scannedApps)
                     {
-                        AllApplications.Add(app);
-                        FilteredApplications.Add(app);
+                        if (app.Id == null) app.Id = app.ExecutablePath ?? app.Name;
+                        allApps.Add(app);
                     }
                 }
                 catch (Exception scanEx)
                 {
-                    System.Windows.MessageBox.Show($"Scanner error: {scanEx.Message}", "Scanner Error", 
-                        System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    System.Diagnostics.Debug.WriteLine($"Scanner error: {scanEx.Message}");
                 }
                 
-                // Load saved groups and organize apps
-                await LoadGroupsFromStorage();
+                // Check if this is first run or we have a saved layout
+                if (_layoutConfig?.IsFirstRun == true || _layoutConfig == null)
+                {
+                    // Auto-categorize tools on first run
+                    await AutoCategorizeApps(allApps);
+                    
+                    if (_layoutConfig != null)
+                    {
+                        _layoutConfig.IsFirstRun = false;
+                        SaveLayoutConfiguration();
+                    }
+                }
+                else
+                {
+                    // Restore saved layout
+                    RestoreAppLayout(allApps);
+                }
+                
+                // Add all non-grouped apps to FilteredApplications
+                foreach (var app in AllApplications)
+                {
+                    FilteredApplications.Add(app);
+                }
+                
                 UpdateDisplayItems();
                 
                 // Notify UI that all applications have been loaded
@@ -149,8 +182,7 @@ namespace SeroDesk.ViewModels
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Error loading apps: {ex.Message}", "Error", 
-                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Error loading apps: {ex.Message}");
             }
         }
         
@@ -506,6 +538,244 @@ namespace SeroDesk.ViewModels
             public string Id { get; set; } = string.Empty;
             public string Name { get; set; } = string.Empty;
             public List<string> AppIds { get; set; } = new List<string>();
+        }
+        
+        // New methods for auto-categorization and layout persistence
+        private Task AutoCategorizeApps(List<AppIcon> apps)
+        {
+            var toolsList = new List<AppIcon>();
+            var regularApps = new List<AppIcon>();
+            
+            foreach (var app in apps)
+            {
+                // Check if it's a tool
+                if (ToolPatterns.IsTool(app.Name, app.ExecutablePath) && 
+                    !ToolPatterns.IsMajorApp(app.Name, app.ExecutablePath))
+                {
+                    toolsList.Add(app);
+                }
+                else
+                {
+                    regularApps.Add(app);
+                }
+            }
+            
+            // Create Tools group if we have tools
+            if (toolsList.Count > 0)
+            {
+                var toolsGroup = new AppGroup("Tools & Utilities")
+                {
+                    Id = "tools-utilities-auto"
+                };
+                
+                foreach (var tool in toolsList)
+                {
+                    toolsGroup.AddApp(tool);
+                    tool.GroupId = toolsGroup.Id;
+                }
+                
+                AppGroups.Add(toolsGroup);
+                System.Diagnostics.Debug.WriteLine($"Created Tools group with {toolsList.Count} apps");
+            }
+            
+            // Add regular apps
+            foreach (var app in regularApps.OrderBy(a => a.Name))
+            {
+                AllApplications.Add(app);
+            }
+            
+            // Save initial layout
+            SaveLayoutConfiguration();
+            
+            return Task.CompletedTask;
+        }
+        
+        private void RestoreAppLayout(List<AppIcon> apps)
+        {
+            if (_layoutConfig == null)
+            {
+                // No config, just add apps normally
+                foreach (var app in apps.OrderBy(a => a.Name))
+                {
+                    AllApplications.Add(app);
+                }
+                return;
+            }
+            
+            // Create a dictionary for quick lookup
+            var appDict = apps.ToDictionary(
+                a => a.Id ?? a.ExecutablePath ?? a.Name,
+                a => a
+            );
+            
+            // Restore groups first
+            foreach (var savedGroup in _layoutConfig.Groups)
+            {
+                var group = new AppGroup(savedGroup.Name)
+                {
+                    Id = savedGroup.Id
+                };
+                
+                foreach (var appId in savedGroup.AppIds)
+                {
+                    if (appDict.TryGetValue(appId, out var app))
+                    {
+                        group.AddApp(app);
+                        app.GroupId = group.Id;
+                    }
+                }
+                
+                if (group.Apps.Count > 0)
+                {
+                    AppGroups.Add(group);
+                }
+            }
+            
+            // Restore app positions
+            var positionedApps = new HashSet<string>();
+            var orderedApps = new List<AppIcon>();
+            
+            // First add apps in their saved positions
+            foreach (var savedPos in _layoutConfig.AppPositions.OrderBy(p => p.PageIndex).ThenBy(p => p.Row).ThenBy(p => p.Column))
+            {
+                if (appDict.TryGetValue(savedPos.AppId, out var app))
+                {
+                    if (string.IsNullOrEmpty(app.GroupId)) // Only add non-grouped apps
+                    {
+                        orderedApps.Add(app);
+                        positionedApps.Add(savedPos.AppId);
+                    }
+                }
+            }
+            
+            // Then add any new apps that weren't in the saved layout
+            foreach (var app in apps.OrderBy(a => a.Name))
+            {
+                var appId = app.Id ?? app.ExecutablePath ?? app.Name;
+                if (!positionedApps.Contains(appId) && string.IsNullOrEmpty(app.GroupId))
+                {
+                    orderedApps.Add(app);
+                }
+            }
+            
+            // Add all apps to the collection
+            foreach (var app in orderedApps)
+            {
+                AllApplications.Add(app);
+            }
+        }
+        
+        private void LoadLayoutConfiguration()
+        {
+            try
+            {
+                var configDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "SeroDesk");
+                
+                Directory.CreateDirectory(configDir);
+                
+                if (File.Exists(_configPath))
+                {
+                    var json = File.ReadAllText(_configPath);
+                    _layoutConfig = JsonConvert.DeserializeObject<LayoutConfiguration>(json);
+                    System.Diagnostics.Debug.WriteLine($"Loaded layout config: {_layoutConfig?.AppPositions.Count} positions, {_layoutConfig?.Groups.Count} groups");
+                }
+                else
+                {
+                    // Create default config for first run
+                    _layoutConfig = new LayoutConfiguration
+                    {
+                        IsFirstRun = true
+                    };
+                    SaveLayoutConfiguration();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading layout config: {ex.Message}");
+                _layoutConfig = new LayoutConfiguration { IsFirstRun = true };
+            }
+        }
+        
+        private void SaveLayoutConfiguration()
+        {
+            try
+            {
+                var configDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "SeroDesk");
+                
+                Directory.CreateDirectory(configDir);
+                
+                if (_layoutConfig == null)
+                {
+                    _layoutConfig = new LayoutConfiguration();
+                }
+                
+                // Update config with current state
+                _layoutConfig.LastModified = DateTime.Now;
+                
+                // Save groups
+                _layoutConfig.Groups = AppGroups.Select(group => new Models.SavedGroup
+                {
+                    Id = group.Id,
+                    Name = group.Name,
+                    AppIds = group.Apps.Select(app => app.Id ?? app.ExecutablePath ?? app.Name).ToList()
+                }).ToList();
+                
+                // Save app positions
+                _layoutConfig.AppPositions = new List<Models.SavedAppPosition>();
+                int index = 0;
+                foreach (var item in DisplayItems)
+                {
+                    if (item is AppIcon app)
+                    {
+                        var position = new Models.SavedAppPosition
+                        {
+                            AppId = app.Id ?? app.ExecutablePath ?? app.Name,
+                            AppPath = app.ExecutablePath ?? string.Empty,
+                            PageIndex = index / _itemsPerPage,
+                            Row = (index % _itemsPerPage) / 7,
+                            Column = index % 7,
+                            GroupId = app.GroupId
+                        };
+                        _layoutConfig.AppPositions.Add(position);
+                        index++;
+                    }
+                    else if (item is AppGroup)
+                    {
+                        // Groups are saved separately
+                        index++;
+                    }
+                }
+                
+                var json = JsonConvert.SerializeObject(_layoutConfig, Formatting.Indented);
+                File.WriteAllText(_configPath, json);
+                
+                System.Diagnostics.Debug.WriteLine($"Saved layout config: {_layoutConfig.AppPositions.Count} positions, {_layoutConfig.Groups.Count} groups");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving layout config: {ex.Message}");
+            }
+        }
+        
+        public void SaveCurrentLayout()
+        {
+            SaveLayoutConfiguration();
+        }
+        
+        public void ResetLayout()
+        {
+            _layoutConfig = new LayoutConfiguration
+            {
+                IsFirstRun = true
+            };
+            SaveLayoutConfiguration();
+            
+            // Reload apps to trigger auto-categorization
+            _ = LoadAllApplicationsAsync();
         }
     }
 }

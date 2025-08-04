@@ -50,7 +50,7 @@ namespace SeroDesk.Platform
         public static int GetDpi(DependencyObject obj) => (int)obj.GetValue(DpiProperty);
         public static void SetDpi(DependencyObject obj, int value) => obj.SetValue(DpiProperty, value);
 
-        private static RenderTargetBitmap cachedBitmap;
+        private static RenderTargetBitmap? cachedBitmap;
 
         private static void OnEnableBlurChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
@@ -229,12 +229,12 @@ namespace SeroDesk.Platform
 
     internal static class DependencyObjectExtensions
     {
-        public static T FindParent<T>(this DependencyObject obj) where T : DependencyObject
+        public static T? FindParent<T>(this DependencyObject? obj) where T : DependencyObject
         {
             if (obj == null)
                 return null;
 
-            DependencyObject current = obj;
+            DependencyObject? current = obj;
             while (current != null)
             {
                 current = VisualTreeHelper.GetParent(current);

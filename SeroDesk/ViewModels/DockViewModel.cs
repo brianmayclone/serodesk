@@ -1,6 +1,12 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using Newtonsoft.Json;
+using SeroDesk.Models;
 using SeroDesk.Platform;
 
 namespace SeroDesk.ViewModels
@@ -8,6 +14,8 @@ namespace SeroDesk.ViewModels
     public class DockViewModel : INotifyPropertyChanged
     {
         private ObservableCollection<WindowInfo> _runningApplications;
+        private List<string> _pinnedApps;
+        private string _pinnedAppsConfigPath;
         
         public ObservableCollection<WindowInfo> RunningApplications
         {
@@ -18,6 +26,13 @@ namespace SeroDesk.ViewModels
         public DockViewModel()
         {
             _runningApplications = new ObservableCollection<WindowInfo>();
+            _pinnedApps = new List<string>();
+            
+            _pinnedAppsConfigPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SeroDesk", "pinned_apps.json");
+                
+            LoadPinnedApps();
         }
         
         public void StartMonitoringWindows()
@@ -67,11 +82,25 @@ namespace SeroDesk.ViewModels
             if (window.Title.Contains("SeroDesk"))
                 return false;
             
-            // Don't show system dialogs
+            // Check if app is pinned
+            try
+            {
+                var process = System.Diagnostics.Process.GetProcessById((int)window.ProcessId);
+                var appPath = process.MainModule?.FileName;
+                
+                if (!string.IsNullOrEmpty(appPath) && _pinnedApps.Contains(appPath))
+                {
+                    return true; // Always show pinned apps
+                }
+            }
+            catch { }
+            
+            // Don't show system dialogs unless pinned
             var systemTitles = new[] { "Task Manager", "Control Panel", "Settings" };
             if (systemTitles.Any(title => window.Title.Contains(title)))
                 return false;
             
+            // Show other running applications
             return true;
         }
         
@@ -80,6 +109,109 @@ namespace SeroDesk.ViewModels
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        
+        // Methods for pinning/unpinning apps
+        public void RemoveFromDock(WindowInfo window)
+        {
+            try
+            {
+                var process = System.Diagnostics.Process.GetProcessById((int)window.ProcessId);
+                var appPath = process.MainModule?.FileName;
+                
+                if (!string.IsNullOrEmpty(appPath))
+                {
+                    _pinnedApps.Remove(appPath);
+                    SavePinnedApps();
+                    
+                    // Update the running applications list
+                    UpdateRunningApplications();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error removing from dock: {ex.Message}");
+            }
+        }
+        
+        public void AddToDock(AppIcon app)
+        {
+            try
+            {
+                var appPath = app.ExecutablePath;
+                if (!string.IsNullOrEmpty(appPath) && !_pinnedApps.Contains(appPath))
+                {
+                    _pinnedApps.Add(appPath);
+                    SavePinnedApps();
+                    
+                    // Update the running applications list
+                    UpdateRunningApplications();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Pinned {app.Name} to dock");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error adding to dock: {ex.Message}");
+            }
+        }
+        
+        public bool IsAppPinned(AppIcon app)
+        {
+            var appPath = app.ExecutablePath;
+            return !string.IsNullOrEmpty(appPath) && _pinnedApps.Contains(appPath);
+        }
+        
+        private void LoadPinnedApps()
+        {
+            try
+            {
+                var configDir = Path.GetDirectoryName(_pinnedAppsConfigPath);
+                if (!string.IsNullOrEmpty(configDir))
+                {
+                    Directory.CreateDirectory(configDir);
+                }
+                
+                if (File.Exists(_pinnedAppsConfigPath))
+                {
+                    var json = File.ReadAllText(_pinnedAppsConfigPath);
+                    var pinnedApps = JsonConvert.DeserializeObject<List<string>>(json);
+                    if (pinnedApps != null)
+                    {
+                        _pinnedApps = pinnedApps;
+                        System.Diagnostics.Debug.WriteLine($"Loaded {_pinnedApps.Count} pinned apps");
+                    }
+                }
+                else
+                {
+                    // Add some default pinned apps
+                    _pinnedApps = new List<string>
+                    {
+                        @"C:\Windows\System32\notepad.exe",
+                        @"C:\Windows\System32\calc.exe"
+                    };
+                    SavePinnedApps();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading pinned apps: {ex.Message}");
+                _pinnedApps = new List<string>();
+            }
+        }
+        
+        private void SavePinnedApps()
+        {
+            try
+            {
+                var json = JsonConvert.SerializeObject(_pinnedApps, Formatting.Indented);
+                File.WriteAllText(_pinnedAppsConfigPath, json);
+                System.Diagnostics.Debug.WriteLine($"Saved {_pinnedApps.Count} pinned apps");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving pinned apps: {ex.Message}");
+            }
         }
     }
 }

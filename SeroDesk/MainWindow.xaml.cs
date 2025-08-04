@@ -59,6 +59,12 @@ namespace SeroDesk
         private DockWindow? _dockWindow;
         
         /// <summary>
+        /// View model for the dock functionality, accessible to other components
+        /// for adding/removing apps from the dock.
+        /// </summary>
+        public DockViewModel? DockViewModel => _dockWindow?.Dock?.DataContext as DockViewModel;
+        
+        /// <summary>
         /// Initializes a new instance of the MainWindow class and sets up the core shell infrastructure.
         /// This constructor establishes the MVVM data context, configures gesture recognition,
         /// and prepares the window for shell replacement functionality.

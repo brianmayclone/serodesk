@@ -100,6 +100,9 @@ namespace SeroDesk.Platform
         [DllImport("shell32.dll")]
         public static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATA lpData);
         
+        [DllImport("user32.dll")]
+        public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        
         #endregion
         
         #region DWM (Desktop Window Manager)

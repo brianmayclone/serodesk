@@ -105,8 +105,20 @@
                                         Click="DockIcon_Click"
                                         MouseEnter="DockIcon_MouseEnter"
                                         MouseLeave="DockIcon_MouseLeave"
+                                        MouseRightButtonUp="DockIcon_RightClick"
                                         Tag="{Binding}"
                                         ToolTip="{Binding Title}">
+                                    <Button.ContextMenu>
+                                        <ContextMenu x:Name="DockIconContextMenu">
+                                            <MenuItem Header="Open" Click="ContextMenu_Open"/>
+                                            <MenuItem Header="Close Window" Click="ContextMenu_Close"/>
+                                            <Separator/>
+                                            <MenuItem Header="Unpin from Dock" Click="ContextMenu_UnpinFromDock"/>
+                                            <Separator/>
+                                            <MenuItem Header="Open File Location" Click="ContextMenu_OpenFileLocation"/>
+                                            <MenuItem Header="Properties" Click="ContextMenu_Properties"/>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
                                             <Grid>

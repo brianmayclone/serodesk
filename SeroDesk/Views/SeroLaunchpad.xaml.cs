@@ -200,6 +200,9 @@ namespace SeroDesk.Views
             if (_viewModel != null)
             {
                 _viewModel.FilterApplications(SearchBox.Text);
+                
+                // Recreate icon views to show search results
+                CreateIconViews();
             }
         }
         
@@ -540,6 +543,9 @@ namespace SeroDesk.Views
             
             _draggedIcon = null;
             
+            // Save the new layout after drag
+            _viewModel?.SaveCurrentLayout();
+            
             System.Diagnostics.Debug.WriteLine("Drag completed");
         }
         
@@ -558,9 +564,9 @@ namespace SeroDesk.Views
                 if (double.IsNaN(left)) left = 0;
                 if (double.IsNaN(top)) top = 0;
                 
-                var iconBounds = new Rect(left, top, 80, 100); // Use fixed size
+                var iconBounds = new Rect(left, top, 90, 120); // Use updated icon size
                 
-                System.Diagnostics.Debug.WriteLine($"Icon {icon.AppIcon?.Name}: bounds=({left},{top},80,100)");
+                System.Diagnostics.Debug.WriteLine($"Icon {icon.AppIcon?.Name}: bounds=({left},{top},90,120)");
                 
                 if (iconBounds.Contains(position))
                 {
@@ -616,8 +622,8 @@ namespace SeroDesk.Views
             if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
             if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
             
-            var columnsPerPage = 8;
-            var rowsPerPage = 6;
+            var columnsPerPage = 7; // Reduced because icons are larger
+            var rowsPerPage = 5; // Reduced because icons are larger
             
             var horizontalSpacing = canvasWidth / columnsPerPage;
             var verticalSpacing = canvasHeight / rowsPerPage;
@@ -648,10 +654,10 @@ namespace SeroDesk.Views
             if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
             if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
             
-            var iconWidth = 80.0;
-            var iconHeight = 100.0;
-            var columnsPerPage = 8;
-            var rowsPerPage = 6;
+            var iconWidth = 90.0;
+            var iconHeight = 120.0;
+            var columnsPerPage = 7; // Reduced because icons are larger
+            var rowsPerPage = 5; // Reduced because icons are larger
             var iconsPerPage = columnsPerPage * rowsPerPage;
             
             var horizontalSpacing = canvasWidth / columnsPerPage;
@@ -713,10 +719,10 @@ namespace SeroDesk.Views
             if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
             if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
             
-            var iconWidth = 80.0;
-            var iconHeight = 100.0;
-            var columnsPerPage = 8;
-            var rowsPerPage = 6;
+            var iconWidth = 90.0;
+            var iconHeight = 120.0;
+            var columnsPerPage = 7; // Reduced because icons are larger
+            var rowsPerPage = 5; // Reduced because icons are larger
             
             var horizontalSpacing = canvasWidth / columnsPerPage;
             var verticalSpacing = canvasHeight / rowsPerPage;
@@ -983,12 +989,12 @@ namespace SeroDesk.Views
         {
             if (_viewModel == null || IconCanvas == null) return;
             
-            System.Diagnostics.Debug.WriteLine($"CreateIconViews: AllApplications={_viewModel.AllApplications.Count}, AppGroups={_viewModel.AppGroups.Count}");
+            System.Diagnostics.Debug.WriteLine($"CreateIconViews: DisplayItems={_viewModel.DisplayItems.Count}, SearchText='{_viewModel.SearchText}'");
             
-            // Only create views if we have apps to display
-            if (_viewModel.AllApplications.Count == 0 && _viewModel.AppGroups.Count == 0)
+            // Only create views if we have items to display
+            if (_viewModel.DisplayItems.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("No apps to display yet, skipping CreateIconViews");
+                System.Diagnostics.Debug.WriteLine("No items to display, skipping CreateIconViews");
                 return;
             }
             
@@ -1002,10 +1008,10 @@ namespace SeroDesk.Views
             if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
             if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
             
-            var iconWidth = 80.0;
-            var iconHeight = 100.0;
-            var columnsPerPage = 8;
-            var rowsPerPage = 6;
+            var iconWidth = 90.0;
+            var iconHeight = 120.0;
+            var columnsPerPage = 7; // Reduced because icons are larger
+            var rowsPerPage = 5; // Reduced because icons are larger
             var iconsPerPage = columnsPerPage * rowsPerPage;
             
             // Calculate spacing with validated dimensions
@@ -1014,79 +1020,62 @@ namespace SeroDesk.Views
             
             System.Diagnostics.Debug.WriteLine($"Canvas: {canvasWidth}x{canvasHeight}, Spacing: {horizontalSpacing}x{verticalSpacing}");
             
-            // Create icon views for all apps
+            // Create icon views for display items
             int iconIndex = 0;
             
-            // Add individual apps
-            foreach (var app in _viewModel.AllApplications)
+            // Add items from DisplayItems (handles both search and normal view)
+            foreach (var item in _viewModel.DisplayItems)
             {
-                if (app.GroupId != null) continue; // Skip grouped apps
+                SeroIconView? iconView = null;
                 
-                var iconView = new SeroIconView
+                if (item is AppIcon app)
                 {
-                    AppIcon = app,
-                    IsGroup = false
-                };
-                
-                System.Diagnostics.Debug.WriteLine($"Creating SeroIconView for {app.Name}, IconImage={app.IconImage != null}");
-                
-                // Calculate position
-                var pageIndex = iconIndex / iconsPerPage;
-                var localIndex = iconIndex % iconsPerPage;
-                var row = localIndex / columnsPerPage;
-                var col = localIndex % columnsPerPage;
-                
-                var x = pageIndex * canvasWidth + col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
-                var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
-                
-                Canvas.SetLeft(iconView, x);
-                Canvas.SetTop(iconView, y);
-                iconView.GridPosition = new Point(col, row);
-                
-                // Hook up event handlers
-                iconView.IconClicked += OnIconClicked;
-                iconView.DragStarted += OnIconDragStarted;
-                iconView.DragMoved += OnIconDragMoved;
-                iconView.DragCompleted += OnIconDragCompleted;
-                
-                IconCanvas.Children.Add(iconView);
-                iconIndex++;
-                
-                System.Diagnostics.Debug.WriteLine($"Added icon {app.Name} at position ({x}, {y})");
-            }
-            
-            // Add groups
-            foreach (var group in _viewModel.AppGroups)
-            {
-                var iconView = new SeroIconView
+                    iconView = new SeroIconView
+                    {
+                        AppIcon = app,
+                        IsGroup = false
+                    };
+                    System.Diagnostics.Debug.WriteLine($"Creating SeroIconView for app {app.Name}, IconImage={app.IconImage != null}");
+                }
+                else if (item is AppGroup group)
                 {
-                    AppGroup = group,
-                    IsGroup = true
-                };
+                    iconView = new SeroIconView
+                    {
+                        AppGroup = group,
+                        IsGroup = true
+                    };
+                    System.Diagnostics.Debug.WriteLine($"Creating SeroIconView for group {group.Name}");
+                }
                 
-                // Calculate position
-                var pageIndex = iconIndex / iconsPerPage;
-                var localIndex = iconIndex % iconsPerPage;
-                var row = localIndex / columnsPerPage;
-                var col = localIndex % columnsPerPage;
-                
-                var x = pageIndex * canvasWidth + col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
-                var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
-                
-                Canvas.SetLeft(iconView, x);
-                Canvas.SetTop(iconView, y);
-                iconView.GridPosition = new Point(col, row);
-                
-                // Hook up event handlers
-                iconView.IconClicked += OnIconClicked;
-                iconView.DragStarted += OnIconDragStarted;
-                iconView.DragMoved += OnIconDragMoved;
-                iconView.DragCompleted += OnIconDragCompleted;
-                
-                IconCanvas.Children.Add(iconView);
-                iconIndex++;
-                
-                System.Diagnostics.Debug.WriteLine($"Added group {group.Name} at position ({x}, {y})");
+                if (iconView != null)
+                {
+                    // Calculate position
+                    var pageIndex = iconIndex / iconsPerPage;
+                    var localIndex = iconIndex % iconsPerPage;
+                    var row = localIndex / columnsPerPage;
+                    var col = localIndex % columnsPerPage;
+                    
+                    var x = pageIndex * canvasWidth + col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
+                    var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                    
+                    Canvas.SetLeft(iconView, x);
+                    Canvas.SetTop(iconView, y);
+                    iconView.GridPosition = new Point(col, row);
+                    
+                    // Hook up event handlers
+                    iconView.IconClicked += OnIconClicked;
+                    iconView.DragStarted += OnIconDragStarted;
+                    iconView.DragMoved += OnIconDragMoved;
+                    iconView.DragCompleted += OnIconDragCompleted;
+                    iconView.PinToDockRequested += OnPinToDockRequested;
+                    iconView.UnpinFromDockRequested += OnUnpinFromDockRequested;
+                    
+                    IconCanvas.Children.Add(iconView);
+                    iconIndex++;
+                    
+                    var name = (item is AppIcon a) ? a.Name : ((AppGroup)item).Name;
+                    System.Diagnostics.Debug.WriteLine($"Added {name} at position ({x}, {y})");
+                }
             }
             
             UpdatePageIndicators();
@@ -1210,6 +1199,49 @@ namespace SeroDesk.Views
             }
             
             base.OnKeyDown(e);
+        }
+        
+        // Pin/Unpin Event Handlers
+        private void OnPinToDockRequested(object? sender, IconContextMenuEventArgs e)
+        {
+            if (e.AppIcon != null)
+            {
+                try
+                {
+                    var mainWindow = Window.GetWindow(this) as MainWindow;
+                    if (mainWindow?.DockViewModel != null)
+                    {
+                        mainWindow.DockViewModel.AddToDock(e.AppIcon);
+                        System.Diagnostics.Debug.WriteLine($"Pinned {e.AppIcon.Name} to dock");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error pinning to dock: {ex.Message}");
+                }
+            }
+        }
+        
+        private void OnUnpinFromDockRequested(object? sender, IconContextMenuEventArgs e)
+        {
+            if (e.AppIcon != null)
+            {
+                try
+                {
+                    // Find the corresponding window in the dock and remove it
+                    var mainWindow = Window.GetWindow(this) as MainWindow;
+                    if (mainWindow?.DockViewModel != null)
+                    {
+                        // This would need to be implemented differently since we don't have direct WindowInfo
+                        // For now, just log the attempt
+                        System.Diagnostics.Debug.WriteLine($"Unpinning {e.AppIcon.Name} from dock (not fully implemented)");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error unpinning from dock: {ex.Message}");
+                }
+            }
         }
     }
 }

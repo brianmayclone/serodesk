@@ -4,6 +4,8 @@ using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Text;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using SeroDesk.Platform;
 using SeroDesk.ViewModels;
 
@@ -192,6 +194,36 @@ namespace SeroDesk.Views
         private void DockIcon_MouseLeave(object sender, MouseEventArgs e)
         {
             // Magnification effect is handled in XAML triggers
+        }
+        
+        private void DockIcon_RightClick(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Button button && button.Tag is WindowInfo window)
+            {
+                // Store the current window info for context menu actions
+                button.ContextMenu.Tag = window;
+                
+                // Update context menu items based on window state
+                UpdateContextMenuItems(button.ContextMenu, window);
+                
+                e.Handled = true;
+            }
+        }
+        
+        private void UpdateContextMenuItems(ContextMenu contextMenu, WindowInfo window)
+        {
+            foreach (MenuItem item in contextMenu.Items.OfType<MenuItem>())
+            {
+                switch (item.Header.ToString())
+                {
+                    case "Close Window":
+                        item.IsEnabled = window.IsRunning;
+                        break;
+                    case "Open":
+                        item.IsEnabled = !window.IsRunning || window.IsMinimized;
+                        break;
+                }
+            }
         }
         
         private void FinderIcon_Click(object sender, RoutedEventArgs e)
@@ -463,6 +495,130 @@ namespace SeroDesk.Views
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to toggle desktop mode via Windows key: {ex.Message}");
+            }
+        }
+        
+        // Context Menu Event Handlers
+        private void ContextMenu_Open(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && 
+                menuItem.Parent is ContextMenu contextMenu && 
+                contextMenu.Tag is WindowInfo window)
+            {
+                try
+                {
+                    if (window.IsMinimized)
+                    {
+                        NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_RESTORE);
+                    }
+                    NativeMethods.SetForegroundWindow(window.Handle);
+                    NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_RESTORE);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to open window: {ex.Message}");
+                }
+            }
+        }
+        
+        private void ContextMenu_Close(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && 
+                menuItem.Parent is ContextMenu contextMenu && 
+                contextMenu.Tag is WindowInfo window)
+            {
+                try
+                {
+                    // Send close message to window
+                    const int WM_CLOSE = 0x0010;
+                    NativeMethods.SendMessage(window.Handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to close window: {ex.Message}");
+                }
+            }
+        }
+        
+        private void ContextMenu_UnpinFromDock(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && 
+                menuItem.Parent is ContextMenu contextMenu && 
+                contextMenu.Tag is WindowInfo window)
+            {
+                try
+                {
+                    // Remove from dock by removing from running applications
+                    if (_viewModel != null)
+                    {
+                        _viewModel.RemoveFromDock(window);
+                        System.Diagnostics.Debug.WriteLine($"Unpinned {window.Title} from dock");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to unpin from dock: {ex.Message}");
+                }
+            }
+        }
+        
+        private void ContextMenu_OpenFileLocation(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && 
+                menuItem.Parent is ContextMenu contextMenu && 
+                contextMenu.Tag is WindowInfo window)
+            {
+                try
+                {
+                    // Get the process path
+                    var process = Process.GetProcessById((int)window.ProcessId);
+                    if (process.MainModule?.FileName != null)
+                    {
+                        var filePath = process.MainModule.FileName;
+                        var folderPath = Path.GetDirectoryName(filePath);
+                        
+                        if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
+                        {
+                            // Open explorer and select the file
+                            Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to open file location: {ex.Message}");
+                }
+            }
+        }
+        
+        private void ContextMenu_Properties(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && 
+                menuItem.Parent is ContextMenu contextMenu && 
+                contextMenu.Tag is WindowInfo window)
+            {
+                try
+                {
+                    // Get the process path
+                    var process = Process.GetProcessById((int)window.ProcessId);
+                    if (process.MainModule?.FileName != null)
+                    {
+                        var filePath = process.MainModule.FileName;
+                        
+                        // Show properties dialog using shell execute
+                        var processInfo = new ProcessStartInfo
+                        {
+                            FileName = "rundll32.exe",
+                            Arguments = $"shell32.dll,Properties_RunDLL \"{filePath}\"",
+                            UseShellExecute = true
+                        };
+                        Process.Start(processInfo);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to show properties: {ex.Message}");
+                }
             }
         }
     }

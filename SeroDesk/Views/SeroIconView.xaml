@@ -4,14 +4,25 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
-             Width="80" Height="100"
+             Width="90" Height="120"
              d:DesignHeight="100" d:DesignWidth="80">
     
-    <Grid x:Name="IconRoot" Background="Transparent">
+    <Grid x:Name="IconRoot" Background="Transparent" MouseRightButtonUp="IconRoot_RightClick">
+        <Grid.ContextMenu>
+            <ContextMenu x:Name="IconContextMenu">
+                <MenuItem Header="Open" Click="ContextMenu_Open"/>
+                <Separator/>
+                <MenuItem Header="Pin to Dock" x:Name="PinToDockMenuItem" Click="ContextMenu_PinToDock"/>
+                <MenuItem Header="Unpin from Dock" x:Name="UnpinFromDockMenuItem" Click="ContextMenu_UnpinFromDock"/>
+                <Separator/>
+                <MenuItem Header="Open File Location" Click="ContextMenu_OpenFileLocation"/>
+                <MenuItem Header="Properties" Click="ContextMenu_Properties"/>
+            </ContextMenu>
+        </Grid.ContextMenu>
         <!-- Glassmorphism Background (without blur effect) -->
         <Border x:Name="GlassBackground"
                 CornerRadius="16"
-                Width="60" Height="60"
+                Width="70" Height="70"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center">
             <Border.Background>
@@ -35,7 +46,7 @@
         <!-- Icon Container (sharp, no blur) -->
         <Border x:Name="IconBackground" 
                 CornerRadius="16"
-                Width="60" Height="60"
+                Width="70" Height="70"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
                 Background="Transparent">
@@ -45,13 +56,13 @@
             
             <!-- App Icon Image (sharp) -->
             <Image x:Name="IconImage"
-                   Width="40" Height="40"
+                   Width="50" Height="50"
                    Stretch="Uniform"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center">
                 <Image.Clip>
-                    <RectangleGeometry Rect="0,0,40,40" 
-                                     RadiusX="8" RadiusY="8"/>
+                    <RectangleGeometry Rect="0,0,50,50" 
+                                     RadiusX="10" RadiusY="10"/>
                 </Image.Clip>
             </Image>
         </Border>
@@ -59,15 +70,15 @@
         <!-- App Name -->
         <TextBlock x:Name="IconText"
                    Foreground="White"
-                   FontSize="10"
+                   FontSize="12"
                    FontWeight="Medium"
                    TextAlignment="Center"
                    TextWrapping="Wrap"
                    VerticalAlignment="Top"
                    HorizontalAlignment="Center"
-                   Margin="2,62,2,0"
-                   MaxWidth="76"
-                   MaxHeight="20"
+                   Margin="2,72,2,0"
+                   MaxWidth="86"
+                   MaxHeight="40"
                    TextTrimming="CharacterEllipsis">
             <TextBlock.Effect>
                 <DropShadowEffect Color="Black" BlurRadius="3" Opacity="0.8" ShadowDepth="1"/>
@@ -78,14 +89,14 @@
         <Border x:Name="AppCountBadge"
                 Background="#FF3B30"
                 CornerRadius="10"
-                Width="18" Height="18"
+                Width="20" Height="20"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Right"
-                Margin="0,2,2,0"
+                Margin="0,4,4,0"
                 Visibility="Collapsed">
             <TextBlock x:Name="AppCountText"
                        Foreground="White"
-                       FontSize="10"
+                       FontSize="11"
                        FontWeight="Bold"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"/>
@@ -95,7 +106,7 @@
         <Border x:Name="DragPreview"
                 Background="#40007AFF"
                 CornerRadius="16"
-                Width="60" Height="60"
+                Width="70" Height="70"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
                 Visibility="Collapsed"/>
