@@ -59,6 +59,11 @@ namespace SeroDesk
         private DockWindow? _dockWindow;
         
         /// <summary>
+        /// StatusBar window for iOS-style status bar with automatic window resizing
+        /// </summary>
+        private StatusBarWindow? _statusBarWindow;
+        
+        /// <summary>
         /// View model for the dock functionality, accessible to other components
         /// for adding/removing apps from the dock.
         /// </summary>

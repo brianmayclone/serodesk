@@ -416,6 +416,8 @@ namespace SeroDesk.Views
         
         private void CloseGroupExpanded_Click(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine("CloseGroupExpanded_Click called - closing group overlay");
+            
             // Fade out animation
             var fadeOut = new DoubleAnimation
             {
@@ -427,6 +429,7 @@ namespace SeroDesk.Views
             
             fadeOut.Completed += (s, args) =>
             {
+                System.Diagnostics.Debug.WriteLine("Group overlay fade out completed - hiding overlay");
                 GroupExpandedOverlay.Visibility = Visibility.Collapsed;
                 GroupAppsGrid.ItemsSource = null;
             };
@@ -494,16 +497,24 @@ namespace SeroDesk.Views
         
         private void OnIconClicked(object? sender, IconClickEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"OnIconClicked received in SeroLaunchpad - IsGroup: {e.IsGroup}, AppName: {e.AppIcon?.Name}, GroupName: {e.AppGroup?.Name}");
+            
             if (e.IsGroup && e.AppGroup != null)
             {
+                System.Diagnostics.Debug.WriteLine($"Opening group: {e.AppGroup.Name}");
                 // Show group expanded view
                 ShowGroupExpandedView(e.AppGroup);
             }
             else if (e.AppIcon != null)
             {
+                System.Diagnostics.Debug.WriteLine($"Launching app: {e.AppIcon.Name}");
                 // Launch app
                 e.AppIcon.Launch();
                 PlayLaunchAnimation(e.IconView);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("OnIconClicked - No valid app or group found");
             }
         }
         

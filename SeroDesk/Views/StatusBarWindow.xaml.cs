@@ -203,6 +203,8 @@ namespace SeroDesk.Views
         {
             if (_isVisible || _isAnimating) return;
             
+            System.Diagnostics.Debug.WriteLine("ShowStatusBar: Starting to show StatusBar and resize windows");
+            
             _isAnimating = true;
             _isVisible = true;
             
@@ -229,6 +231,7 @@ namespace SeroDesk.Views
             slideDown.Completed += (s, e) => 
             {
                 _isAnimating = false;
+                System.Diagnostics.Debug.WriteLine("ShowStatusBar: Animation completed, calling ResizeOverlappingWindows");
                 // Resize overlapping windows when StatusBar becomes visible
                 ResizeOverlappingWindows();
             };
@@ -243,6 +246,8 @@ namespace SeroDesk.Views
         private void HideStatusBar()
         {
             if (!_isVisible || _isAnimating) return;
+            
+            System.Diagnostics.Debug.WriteLine("HideStatusBar: Starting to hide StatusBar and restore windows");
             
             _isAnimating = true;
             _isVisible = false;
@@ -267,6 +272,7 @@ namespace SeroDesk.Views
             {
                 _isAnimating = false;
                 this.Visibility = Visibility.Hidden;
+                System.Diagnostics.Debug.WriteLine("HideStatusBar: Animation completed, calling RestoreResizedWindows");
                 // Restore windows to original sizes when StatusBar hides
                 RestoreResizedWindows();
             };
@@ -342,28 +348,44 @@ namespace SeroDesk.Views
         
         private void ResizeOverlappingWindows()
         {
-            // Clear previous tracking
-            _resizedWindows.Clear();
+            System.Diagnostics.Debug.WriteLine("ResizeOverlappingWindows: Starting window resize process");
+            
+            // Prevent multiple simultaneous calls
+            if (_resizedWindows.Count > 0)
+            {
+                System.Diagnostics.Debug.WriteLine("ResizeOverlappingWindows: Already in progress, skipping");
+                return;
+            }
             
             // Get screen dimensions
             var screenHeight = SystemParameters.PrimaryScreenHeight;
             var screenWidth = SystemParameters.PrimaryScreenWidth;
             
+            System.Diagnostics.Debug.WriteLine($"Screen dimensions: {screenWidth}x{screenHeight}, StatusBar height: {STATUS_BAR_HEIGHT}");
+            
             // Enumerate all windows
             NativeMethods.EnumWindows((hWnd, lParam) =>
             {
-                if (NativeMethods.IsWindowVisible(hWnd) && !IsFullscreenWindow(hWnd))
+                try
                 {
-                    // Get window title to filter out system windows
+                    // Get window title first (even for invisible windows for debugging)
                     var length = NativeMethods.GetWindowTextLength(hWnd);
+                    var windowTitle = "";
                     if (length > 0)
                     {
                         var title = new StringBuilder(length + 1);
                         NativeMethods.GetWindowText(hWnd, title, title.Capacity);
-                        
-                        var windowTitle = title.ToString();
+                        windowTitle = title.ToString();
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"EnumWindows: Found window '{windowTitle}' (Handle: {hWnd}) - Visible: {NativeMethods.IsWindowVisible(hWnd)}");
+                    
+                    // Check if window is visible (removed fullscreen check - resize ALL windows)
+                    if (NativeMethods.IsWindowVisible(hWnd))
+                    {
                         if (!string.IsNullOrEmpty(windowTitle) && 
                             !windowTitle.Contains("SeroDesk") &&
+                            !windowTitle.Contains("Launchpad") &&
                             !windowTitle.Contains("Task View") &&
                             !windowTitle.Contains("Start") &&
                             windowTitle != "Program Manager")
@@ -371,9 +393,12 @@ namespace SeroDesk.Views
                             // Get current window position and size
                             if (NativeMethods.GetWindowRect(hWnd, out var rect))
                             {
+                                System.Diagnostics.Debug.WriteLine($"Found window '{windowTitle}' at {rect.Left},{rect.Top} {rect.Right - rect.Left}x{rect.Bottom - rect.Top}");
+                                
                                 // Check if window overlaps with status bar area (top 32 pixels)
                                 if (rect.Top < STATUS_BAR_HEIGHT && rect.Bottom > 0)
                                 {
+                                    System.Diagnostics.Debug.WriteLine($"Window '{windowTitle}' overlaps with StatusBar - will resize");
                                     bool isMaximized = IsMaximizedWindow(hWnd);
                                     
                                     // Store original position/size and maximized state
@@ -382,27 +407,33 @@ namespace SeroDesk.Views
                                     
                                     if (isMaximized)
                                     {
-                                        // For maximized windows, first restore them, then resize
-                                        NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+                                        System.Diagnostics.Debug.WriteLine($"Window '{windowTitle}' is maximized - using special maximized handling");
                                         
-                                        // Wait a brief moment for the restore to take effect
+                                        // For maximized windows, use a different approach:
+                                        // Set working area to exclude StatusBar area instead of resizing the window
+                                        
+                                        // Get the actual work area (screen minus taskbar and other system elements)
+                                        var workArea = SystemParameters.WorkArea;
+                                        System.Diagnostics.Debug.WriteLine($"Work area: {workArea.Left},{workArea.Top} {workArea.Width}x{workArea.Height}");
+                                        
+                                        // Calculate new maximized area (work area minus StatusBar)
+                                        var newLeft = (int)workArea.Left;
+                                        var newTop = Math.Max((int)workArea.Top, STATUS_BAR_HEIGHT);
+                                        var newWidth = (int)workArea.Width;
+                                        var newHeight = (int)(workArea.Height - (newTop - workArea.Top));
+                                        
+                                        System.Diagnostics.Debug.WriteLine($"Adjusting maximized window '{windowTitle}' to fit below StatusBar: {newLeft},{newTop} {newWidth}x{newHeight}");
+                                        
+                                        // First restore to normal, then resize to custom "maximized" area
+                                        NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
                                         System.Threading.Thread.Sleep(50);
                                         
-                                        // Get the new window rect after restore
-                                        if (NativeMethods.GetWindowRect(hWnd, out var restoredRect))
-                                        {
-                                            // Calculate new position avoiding the status bar
-                                            var newY = Math.Max(STATUS_BAR_HEIGHT, restoredRect.Top);
-                                            var newHeight = (restoredRect.Bottom - restoredRect.Top) - (newY - restoredRect.Top);
+                                        // Set to custom maximized position that respects work area
+                                        bool success = NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
+                                            newLeft, newTop, newWidth, newHeight,
+                                            NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
                                             
-                                            // Only resize if the window would still have reasonable height
-                                            if (newHeight > 100)
-                                            {
-                                                NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
-                                                    restoredRect.Left, newY, restoredRect.Right - restoredRect.Left, newHeight,
-                                                    NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
-                                            }
-                                        }
+                                        System.Diagnostics.Debug.WriteLine($"Maximized window resize result: {success}");
                                     }
                                     else
                                     {
@@ -413,22 +444,49 @@ namespace SeroDesk.Views
                                         // Only resize if the window would still have reasonable height
                                         if (newHeight > 100)
                                         {
-                                            NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
+                                            System.Diagnostics.Debug.WriteLine($"Resizing regular window '{windowTitle}' to {rect.Left},{newY} {rect.Right - rect.Left}x{newHeight}");
+                                            
+                                            bool success = NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
                                                 rect.Left, newY, rect.Right - rect.Left, newHeight,
                                                 NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                                                
+                                            System.Diagnostics.Debug.WriteLine($"Resize result: {success}");
+                                        }
+                                        else
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"Skipping resize - new height {newHeight} too small");
                                         }
                                     }
                                 }
                             }
                         }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"EnumWindows: Skipping window '{windowTitle}' - filtered out or empty title");
+                        }
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(windowTitle))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"EnumWindows: Skipping window '{windowTitle}' - not visible");
+                        }
                     }
                 }
-                return true;
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"EnumWindows: Error processing window {hWnd}: {ex.Message}");
+                }
+                return true; // Continue enumeration
             }, IntPtr.Zero);
+            
+            System.Diagnostics.Debug.WriteLine($"ResizeOverlappingWindows: Window enumeration completed. Found {_resizedWindows.Count} windows to resize.");
         }
         
         private void RestoreResizedWindows()
         {
+            System.Diagnostics.Debug.WriteLine($"RestoreResizedWindows: Restoring {_resizedWindows.Count} windows");
+            
             // Restore all windows to their original positions/sizes
             foreach (var kvp in _resizedWindows)
             {
@@ -442,15 +500,21 @@ namespace SeroDesk.Views
                     {
                         if (originalInfo.WasMaximized)
                         {
+                            System.Diagnostics.Debug.WriteLine($"Restoring window {hWnd} to maximized state");
                             // For previously maximized windows, restore to maximized state
+                            // First restore to normal, then maximize to ensure correct behavior
+                            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+                            System.Threading.Thread.Sleep(50);
                             NativeMethods.ShowWindow(hWnd, NativeMethods.SW_MAXIMIZE);
                         }
                         else
                         {
+                            System.Diagnostics.Debug.WriteLine($"Restoring window {hWnd} to original position {originalInfo.X},{originalInfo.Y} {originalInfo.Width}x{originalInfo.Height}");
                             // For regular windows, restore original position and size
-                            NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
+                            bool success = NativeMethods.SetWindowPos(hWnd, IntPtr.Zero,
                                 originalInfo.X, originalInfo.Y, originalInfo.Width, originalInfo.Height,
                                 NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+                            System.Diagnostics.Debug.WriteLine($"Restore result: {success}");
                         }
                     }
                 }
@@ -479,10 +543,26 @@ namespace SeroDesk.Views
                 var windowWidth = rect.Right - rect.Left;
                 var windowHeight = rect.Bottom - rect.Top;
                 
-                // Consider a window fullscreen if it covers the entire screen (with small tolerance)
-                return (rect.Left <= 0 && rect.Top <= 0 && 
-                       windowWidth >= screenWidth - 10 && 
-                       windowHeight >= screenHeight - 10);
+                // Consider a window fullscreen if it covers the entire screen exactly (no tolerance for normal windows)
+                bool isFullscreen = (rect.Left <= 0 && rect.Top <= 0 && 
+                       windowWidth >= screenWidth && 
+                       windowHeight >= screenHeight);
+                       
+                if (isFullscreen)
+                {
+                    // Get window title for debugging
+                    var length = NativeMethods.GetWindowTextLength(hWnd);
+                    var windowTitle = "";
+                    if (length > 0)
+                    {
+                        var title = new StringBuilder(length + 1);
+                        NativeMethods.GetWindowText(hWnd, title, title.Capacity);
+                        windowTitle = title.ToString();
+                    }
+                    System.Diagnostics.Debug.WriteLine($"IsFullscreenWindow: Window '{windowTitle}' detected as fullscreen {rect.Left},{rect.Top} {windowWidth}x{windowHeight}");
+                }
+                
+                return isFullscreen;
             }
             catch
             {

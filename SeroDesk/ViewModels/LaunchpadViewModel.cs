@@ -211,8 +211,7 @@ namespace SeroDesk.ViewModels
             LoadWallpaper();
         }
         
-        private System.Windows.Threading.DispatcherTimer? _searchTimer;
-        private string _pendingSearchText = "";
+        // Removed unused search timer fields - search is now immediate
         
         public void FilterApplications(string searchText)
         {
@@ -608,7 +607,7 @@ namespace SeroDesk.ViewModels
             var orderedApps = new List<AppIcon>();
             
             // First add apps in their saved positions
-            foreach (var savedPos in _layoutConfig.AppPositions.OrderBy(p => p.PageIndex).ThenBy(p => p.Row).ThenBy(p => p.Column))
+            foreach (var savedPos in (_layoutConfig.AppPositions ?? new List<Models.SavedAppPosition>()).OrderBy(p => p.PageIndex).ThenBy(p => p.Row).ThenBy(p => p.Column))
             {
                 if (appDict.TryGetValue(savedPos.AppId, out var app))
                 {

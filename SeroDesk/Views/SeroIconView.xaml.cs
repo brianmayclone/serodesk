@@ -255,13 +255,18 @@ namespace SeroDesk.Views
         
         private void OnIconClicked()
         {
+            System.Diagnostics.Debug.WriteLine($"OnIconClicked called for {AppIcon?.Name ?? AppGroup?.Name}");
+            
             // Check if we're in edit mode by looking at delete button visibility
             var deleteButton = this.FindName("DeleteButton") as Button;
             bool isInEditMode = deleteButton?.Visibility == Visibility.Visible;
             
+            System.Diagnostics.Debug.WriteLine($"OnIconClicked - IsEditMode: {isInEditMode}");
+            
             // Don't launch apps in edit mode
             if (isInEditMode)
             {
+                System.Diagnostics.Debug.WriteLine("OnIconClicked - Suppressed due to edit mode");
                 return;
             }
             
@@ -272,6 +277,8 @@ namespace SeroDesk.Views
                 AppGroup = this.AppGroup,
                 IsGroup = this.IsGroup
             };
+            
+            System.Diagnostics.Debug.WriteLine($"OnIconClicked - Firing IconClicked event for {(IsGroup ? "Group" : "App")}: {AppIcon?.Name ?? AppGroup?.Name}");
             IconClicked?.Invoke(this, clickEventArgs);
         }
         
@@ -294,13 +301,13 @@ namespace SeroDesk.Views
                 _longPressStartPoint = e.ManipulationOrigin;
             }
             
-            // Cancel long press if moved too much
+            // Cancel long press if moved too much (increased threshold for touch)
             var deltaFromStart = new Point(
                 Math.Abs(e.ManipulationOrigin.X - _longPressStartPoint.X),
                 Math.Abs(e.ManipulationOrigin.Y - _longPressStartPoint.Y)
             );
             
-            if (deltaFromStart.X > 10 || deltaFromStart.Y > 10)
+            if (deltaFromStart.X > 20 || deltaFromStart.Y > 20) // Increased from 10 to 20
             {
                 _longPressTimer?.Stop();
             }
@@ -309,8 +316,8 @@ namespace SeroDesk.Views
             var deleteButton = this.FindName("DeleteButton") as Button;
             bool isInEditMode = deleteButton?.Visibility == Visibility.Visible;
             
-            if (!_isDragging && (Math.Abs(e.CumulativeManipulation.Translation.X) > 10 || 
-                                Math.Abs(e.CumulativeManipulation.Translation.Y) > 10))
+            if (!_isDragging && (Math.Abs(e.CumulativeManipulation.Translation.X) > 20 || 
+                                Math.Abs(e.CumulativeManipulation.Translation.Y) > 20)) // Increased from 10 to 20
             {
                 // Only start dragging if in edit mode or if long press was triggered
                 if (isInEditMode || _longPressTriggered)
@@ -403,7 +410,12 @@ namespace SeroDesk.Views
             else if (!_hasMovedDuringTouch && !_longPressTriggered)
             {
                 // Only trigger click if there was NO movement and it wasn't a long press
+                System.Diagnostics.Debug.WriteLine($"Touch click detected on {AppIcon?.Name ?? AppGroup?.Name}");
                 OnIconClicked();
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"Touch click suppressed - HasMoved: {_hasMovedDuringTouch}, LongPress: {_longPressTriggered}");
             }
             
             // Reset flags for next touch sequence

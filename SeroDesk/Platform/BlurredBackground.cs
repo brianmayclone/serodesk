@@ -200,8 +200,8 @@ namespace SeroDesk.Platform
             var borderPosition = transform.Transform(new Point(0, 0)); // Get the top-left position of the border relative to the window
 
             // Calculate the size of the RenderTargetBitmap based on the border's size
-            int width = (int)(window.ActualWidth * dpi / 96);
-            int height = (int)(window.ActualHeight * dpi / 96);            
+            int width = (int)((window?.ActualWidth ?? 800) * dpi / 96);
+            int height = (int)((window?.ActualHeight ?? 600) * dpi / 96);            
 
             // Render only the root content of the window (exclude window chrome)
             RenderTargetBitmap renderTarget = new RenderTargetBitmap(width, height, dpi, dpi, PixelFormats.Pbgra32);
