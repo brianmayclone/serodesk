@@ -3,27 +3,104 @@ using System.Windows.Input;
 
 namespace SeroDesk.Platform
 {
+    /// <summary>
+    /// Defines the possible directions for swipe gestures.
+    /// </summary>
     public enum SwipeDirection
     {
+        /// <summary>No swipe detected or gesture not recognized.</summary>
         None,
+        /// <summary>Upward swipe gesture.</summary>
         Up,
+        /// <summary>Downward swipe gesture.</summary>
         Down,
+        /// <summary>Leftward swipe gesture.</summary>
         Left,
+        /// <summary>Rightward swipe gesture.</summary>
         Right
     }
     
+    /// <summary>
+    /// Provides advanced touch gesture recognition for iOS-style interactions in SeroDesk.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The GestureRecognizer class processes raw touch input from WPF manipulation events
+    /// and converts them into semantic gestures that drive the SeroDesk interface:
+    /// <list type="bullet">
+    /// <item>Swipe gestures for navigation (up/down/left/right)</item>
+    /// <item>Pinch gestures for zoom and scaling operations</item>
+    /// <item>Tap gestures for selection and activation</item>
+    /// <item>Double-tap gestures for special actions</item>
+    /// <item>Long-press gestures for context menus and edit modes</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The class uses configurable thresholds to distinguish between different gesture types
+    /// and provides event-based notification when gestures are recognized. This enables
+    /// responsive touch interactions similar to mobile operating systems.
+    /// </para>
+    /// <para>
+    /// All gesture detection is performed in real-time during touch manipulation events,
+    /// with appropriate timing and distance thresholds to ensure reliable recognition.
+    /// </para>
+    /// </remarks>
     public class GestureRecognizer
     {
+        /// <summary>
+        /// The starting point of the current gesture in screen coordinates.
+        /// </summary>
         private Point _startPoint;
+        
+        /// <summary>
+        /// The timestamp when the current gesture began.
+        /// </summary>
         private DateTime _startTime;
+        
+        /// <summary>
+        /// Indicates whether gesture tracking is currently active.
+        /// </summary>
         private bool _isTracking;
+        
+        /// <summary>
+        /// The minimum distance in pixels required to recognize a swipe gesture.
+        /// </summary>
         private readonly double _swipeThreshold = 50;
+        
+        /// <summary>
+        /// The minimum scale change ratio required to recognize a pinch gesture.
+        /// </summary>
         private readonly double _pinchThreshold = 0.1;
         
+        /// <summary>
+        /// Occurs when a swipe gesture is detected and recognized.
+        /// </summary>
+        /// <remarks>
+        /// The event provides the direction of the swipe for appropriate handling by subscribers.
+        /// </remarks>
         public event Action<SwipeDirection>? SwipeDetected;
+        
+        /// <summary>
+        /// Occurs when a pinch gesture is detected.
+        /// </summary>
+        /// <remarks>
+        /// The event provides the scale factor of the pinch operation (values < 1.0 indicate pinch-in, > 1.0 indicate pinch-out).
+        /// </remarks>
         public event Action<double>? PinchDetected;
+        
+        /// <summary>
+        /// Occurs when a simple tap gesture is detected.
+        /// </summary>
         public event Action? TapDetected;
+        
+        /// <summary>
+        /// Occurs when a double-tap gesture is detected within the configured timeout period.
+        /// </summary>
         public event Action? DoubleTapDetected;
+        
+        /// <summary>
+        /// Occurs when a long-press gesture is detected after the configured timeout period.
+        /// </summary>
         public event Action? LongPressDetected;
         
         public Point StartPoint => _startPoint;

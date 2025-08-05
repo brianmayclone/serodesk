@@ -4,41 +4,142 @@ using System.Collections.Generic;
 namespace SeroDesk.Models
 {
     /// <summary>
-    /// Represents the saved layout configuration for the LaunchPad
+    /// Represents the complete saved layout configuration for the LaunchPad interface.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This class serves as the root configuration object that gets serialized to JSON
+    /// for persistent storage of the user's LaunchPad layout. It contains:
+    /// <list type="bullet">
+    /// <item>Individual application positions within the grid</item>
+    /// <item>Group definitions and their contained applications</item>
+    /// <item>Configuration metadata (version, last modified date)</item>
+    /// <item>First-run detection for automatic categorization</item>
+    /// <item>Tool patterns for intelligent categorization</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The configuration is automatically loaded at startup and saved whenever
+    /// the user makes changes to the layout, ensuring persistence across sessions.
+    /// </para>
+    /// </remarks>
     public class LayoutConfiguration
     {
+        /// <summary>
+        /// Gets or sets the configuration format version for future migration compatibility.
+        /// </summary>
         public int Version { get; set; } = 1;
+        
+        /// <summary>
+        /// Gets or sets the timestamp when this configuration was last modified.
+        /// </summary>
         public DateTime LastModified { get; set; } = DateTime.Now;
+        
+        /// <summary>
+        /// Gets or sets the list of saved application positions in the LaunchPad grid.
+        /// </summary>
         public List<SavedAppPosition> AppPositions { get; set; } = new List<SavedAppPosition>();
+        
+        /// <summary>
+        /// Gets or sets the list of application groups created by the user or auto-categorization.
+        /// </summary>
         public List<SavedGroup> Groups { get; set; } = new List<SavedGroup>();
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this is the first run of the application.
+        /// </summary>
+        /// <remarks>
+        /// When true, the application will perform automatic categorization of installed applications.
+        /// This flag is set to false after the initial setup is complete.
+        /// </remarks>
         public bool IsFirstRun { get; set; } = true;
+        
+        /// <summary>
+        /// Gets or sets the list of tool patterns used for automatic application categorization.
+        /// </summary>
         public List<string> ToolPatterns { get; set; } = new List<string>();
     }
 
     /// <summary>
-    /// Represents a saved app position in the grid
+    /// Represents the saved position and metadata for an individual application in the LaunchPad grid.
     /// </summary>
+    /// <remarks>
+    /// This class stores all the information needed to restore an application's exact position
+    /// in the LaunchPad layout, including its page, row, column, and group membership.
+    /// </remarks>
     public class SavedAppPosition
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the application.
+        /// </summary>
         public string AppId { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the full path to the application's executable file.
+        /// </summary>
+        /// <remarks>
+        /// This path is used for application identification and launch operations.
+        /// </remarks>
         public string AppPath { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the zero-based page index where this application is located.
+        /// </summary>
         public int PageIndex { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the row position within the page grid (0-based).
+        /// </summary>
         public int Row { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the column position within the page grid (0-based).
+        /// </summary>
         public int Column { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the ID of the group this application belongs to, or null if ungrouped.
+        /// </summary>
         public string? GroupId { get; set; }
     }
 
     /// <summary>
-    /// Represents a saved group
+    /// Represents a saved application group with its position and member applications.
     /// </summary>
+    /// <remarks>
+    /// This class stores the persistent state of an application group, including
+    /// its display name, position in the grid, and the list of applications it contains.
+    /// </remarks>
     public class SavedGroup
     {
+        /// <summary>
+        /// Gets or sets the unique identifier for this group.
+        /// </summary>
         public string Id { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the display name of the group.
+        /// </summary>
         public string Name { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the list of application IDs that belong to this group.
+        /// </summary>
         public List<string> AppIds { get; set; } = new List<string>();
+        
+        /// <summary>
+        /// Gets or sets the zero-based page index where this group is displayed.
+        /// </summary>
         public int PageIndex { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the row position of the group within the page grid (0-based).
+        /// </summary>
         public int Row { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the column position of the group within the page grid (0-based).
+        /// </summary>
         public int Column { get; set; }
     }
 

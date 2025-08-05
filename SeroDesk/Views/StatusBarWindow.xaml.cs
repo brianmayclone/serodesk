@@ -10,24 +10,101 @@ using SeroDesk.Platform;
 
 namespace SeroDesk.Views
 {
+    /// <summary>
+    /// Represents the iOS-style status bar window that provides system information and quick access controls.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The StatusBarWindow implements a macOS/iOS-inspired status bar that appears at the top of the screen.
+    /// Key features include:
+    /// <list type="bullet">
+    /// <item>Auto-hide functionality with mouse proximity detection</item>
+    /// <item>Automatic window resizing to prevent overlap with other applications</item>
+    /// <item>System information display (time, date, battery, network status)</item>
+    /// <item>Quick access to Control Center and Notification Center</item>
+    /// <item>Smooth animations for show/hide transitions</item>
+    /// <item>Integration with Windows DWM for proper layering</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The status bar automatically detects when the mouse cursor approaches the top edge of the screen
+    /// and slides down to become visible. When not in use, it auto-hides to maximize screen real estate.
+    /// </para>
+    /// <para>
+    /// Window management integration ensures that when the status bar is visible, other application
+    /// windows are automatically resized to prevent content from being hidden behind the bar.
+    /// </para>
+    /// </remarks>
     public partial class StatusBarWindow : Window
     {
+        /// <summary>
+        /// Timer for tracking mouse position to trigger auto-show functionality.
+        /// </summary>
         private DispatcherTimer _mouseTrackingTimer;
-        private DispatcherTimer _autoHideTimer;
-        private bool _isVisible = true;
-        private bool _isAnimating = false;
-        private bool _isOnDesktop = true; // Track if we're currently on desktop/launchpad
-        private const int STATUS_BAR_HEIGHT = 32;
-        private const int MOUSE_ACTIVATION_AREA = 5; // Pixels from top of screen
         
-        // Window resizing tracking
+        /// <summary>
+        /// Timer for auto-hiding the status bar after a period of inactivity.
+        /// </summary>
+        private DispatcherTimer _autoHideTimer;
+        
+        /// <summary>
+        /// Indicates whether the status bar is currently visible to the user.
+        /// </summary>
+        private bool _isVisible = true;
+        
+        /// <summary>
+        /// Indicates whether a show/hide animation is currently in progress.
+        /// </summary>
+        private bool _isAnimating = false;
+        
+        /// <summary>
+        /// Tracks whether the user is currently on the desktop or LaunchPad view.
+        /// </summary>
+        private bool _isOnDesktop = true;
+        
+        /// <summary>
+        /// The height of the status bar when fully visible.
+        /// </summary>
+        private const int STATUS_BAR_HEIGHT = 32;
+        
+        /// <summary>
+        /// The size of the mouse activation area at the top of the screen in pixels.
+        /// </summary>
+        private const int MOUSE_ACTIVATION_AREA = 5;
+        
+        /// <summary>
+        /// Dictionary tracking windows that have been resized to accommodate the status bar.
+        /// </summary>
         private Dictionary<IntPtr, WindowInfo> _resizedWindows = new Dictionary<IntPtr, WindowInfo>();
         
-        // Structure to store original window information
+        /// <summary>
+        /// Structure to store original window position and size information for restoration.
+        /// </summary>
+        /// <remarks>
+        /// This structure maintains the original window state before it was modified to accommodate
+        /// the status bar, enabling accurate restoration when the status bar is hidden.
+        /// </remarks>
         private struct WindowInfo
         {
-            public int X, Y, Width, Height;
+            /// <summary>The original X position of the window.</summary>
+            public int X;
+            /// <summary>The original Y position of the window.</summary>
+            public int Y;
+            /// <summary>The original width of the window.</summary>
+            public int Width;
+            /// <summary>The original height of the window.</summary>
+            public int Height;
+            /// <summary>Whether the window was maximized before being resized.</summary>
             public bool WasMaximized;
+            
+            /// <summary>
+            /// Initializes a new WindowInfo structure with the specified values.
+            /// </summary>
+            /// <param name="x">The X position of the window.</param>
+            /// <param name="y">The Y position of the window.</param>
+            /// <param name="width">The width of the window.</param>
+            /// <param name="height">The height of the window.</param>
+            /// <param name="wasMaximized">Whether the window was maximized.</param>
             public WindowInfo(int x, int y, int width, int height, bool wasMaximized = false)
             {
                 X = x; Y = y; Width = width; Height = height; WasMaximized = wasMaximized;

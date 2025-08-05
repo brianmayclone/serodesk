@@ -2,13 +2,76 @@ using System.Diagnostics;
 
 namespace SeroDesk.Services
 {
+    /// <summary>
+    /// Manages Windows Explorer processes to enable shell replacement functionality for SeroDesk.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The ExplorerManager provides controlled termination and restoration of Windows Explorer
+    /// to allow SeroDesk to function as a complete shell replacement. This is necessary because:
+    /// <list type="bullet">
+    /// <item>Windows Explorer provides the default taskbar and start menu</item>
+    /// <item>Multiple Explorer instances can interfere with custom shell interfaces</item>
+    /// <item>Clean shell replacement requires stopping Explorer's shell components</item>
+    /// <item>System stability requires proper restoration when SeroDesk exits</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>IMPORTANT:</strong> This class performs sensitive system operations that can affect
+    /// the user's desktop environment. It should only be used when SeroDesk is running as a
+    /// shell replacement, and proper restoration mechanisms must be in place.
+    /// </para>
+    /// <para>
+    /// The class uses a singleton pattern to ensure consistent state management across
+    /// the application lifecycle.
+    /// </para>
+    /// </remarks>
     public class ExplorerManager
     {
+        /// <summary>
+        /// Singleton instance of the ExplorerManager.
+        /// </summary>
         private static ExplorerManager? _instance;
+        
+        /// <summary>
+        /// Gets the singleton instance of the ExplorerManager.
+        /// </summary>
+        /// <value>The global ExplorerManager instance.</value>
         public static ExplorerManager Instance => _instance ??= new ExplorerManager();
 
+        /// <summary>
+        /// Tracks whether Windows Explorer was running before SeroDesk took control.
+        /// </summary>
+        /// <remarks>
+        /// This flag is used to determine whether Explorer should be restored when
+        /// SeroDesk shuts down, preserving the user's original desktop state.
+        /// </remarks>
         private bool _explorerWasRunning = false;
 
+        /// <summary>
+        /// Terminates all running Windows Explorer processes to enable shell replacement.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method performs a controlled shutdown of Windows Explorer and related shell processes.
+        /// The termination process:
+        /// <list type="number">
+        /// <item>Identifies all running explorer.exe processes</item>
+        /// <item>Records whether Explorer was running for later restoration</item>
+        /// <item>Terminates each Explorer process with a timeout</item>
+        /// <item>Cleans up additional Windows shell processes</item>
+        /// <item>Logs the operation results for debugging</item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// <strong>WARNING:</strong> This operation will remove the user's taskbar, start menu,
+        /// and desktop icons until Explorer is restored or SeroDesk provides replacements.
+        /// </para>
+        /// <para>
+        /// The method is designed to be safe and will not crash the system, but it will
+        /// significantly alter the user's desktop environment.
+        /// </para>
+        /// </remarks>
         public void KillExplorer()
         {
             try

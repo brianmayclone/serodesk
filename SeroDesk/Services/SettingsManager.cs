@@ -5,14 +5,63 @@ using Newtonsoft.Json;
 
 namespace SeroDesk.Services
 {
+    /// <summary>
+    /// Manages application settings and configuration persistence for SeroDesk.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The SettingsManager provides centralized configuration management using a singleton pattern.
+    /// It handles:
+    /// <list type="bullet">
+    /// <item>Loading and saving user preferences from JSON files</item>
+    /// <item>Providing default values for first-time users</item>
+    /// <item>Automatic settings persistence on application shutdown</item>
+    /// <item>Property change notifications for UI binding</item>
+    /// <item>Error handling for corrupted or missing configuration files</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// Settings are stored in the user's LocalApplicationData folder under SeroDesk\settings.json
+    /// to ensure they persist across application updates and user sessions.
+    /// </para>
+    /// <para>
+    /// The class implements INotifyPropertyChanged to support data binding scenarios where
+    /// UI elements need to reflect real-time changes to settings.
+    /// </para>
+    /// </remarks>
     public class SettingsManager : INotifyPropertyChanged
     {
+        /// <summary>
+        /// Singleton instance of the SettingsManager.
+        /// </summary>
         private static SettingsManager? _instance;
+        
+        /// <summary>
+        /// Current settings instance containing all configuration values.
+        /// </summary>
         private Settings _settings;
+        
+        /// <summary>
+        /// Full path to the settings JSON file on disk.
+        /// </summary>
         private readonly string _settingsPath;
         
+        /// <summary>
+        /// Gets the singleton instance of the SettingsManager.
+        /// </summary>
+        /// <value>The global SettingsManager instance.</value>
+        /// <remarks>
+        /// The instance is created on first access and maintained throughout the application lifetime.
+        /// </remarks>
         public static SettingsManager Instance => _instance ?? (_instance = new SettingsManager());
         
+        /// <summary>
+        /// Gets or sets the current settings object containing all configuration values.
+        /// </summary>
+        /// <value>A Settings instance with all current configuration values.</value>
+        /// <remarks>
+        /// Setting this property triggers property change notifications for data binding scenarios.
+        /// </remarks>
         public Settings Settings
         {
             get => _settings;
@@ -28,6 +77,19 @@ namespace SeroDesk.Services
             _settings = new Settings();
         }
         
+        /// <summary>
+        /// Loads settings from the persistent storage file.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method attempts to load settings from the JSON file in LocalApplicationData.
+        /// If the file doesn't exist or contains invalid JSON, default settings are used instead.
+        /// </para>
+        /// <para>
+        /// The method is designed to be fault-tolerant, ensuring the application can start
+        /// even if the settings file is corrupted or missing.
+        /// </para>
+        /// </remarks>
         public void LoadSettings()
         {
             try

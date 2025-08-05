@@ -6,19 +6,91 @@ using System.Windows.Media.Imaging;
 
 namespace SeroDesk.Services
 {
+    /// <summary>
+    /// Provides access to the current Windows desktop wallpaper for use in SeroDesk interface backgrounds.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The WallpaperService integrates with Windows registry and system APIs to retrieve
+    /// the currently active desktop wallpaper. This enables SeroDesk to maintain visual
+    /// consistency with the user's desktop environment:
+    /// <list type="bullet">
+    /// <item>Retrieves the current wallpaper path from Windows registry</item>
+    /// <item>Loads and caches wallpaper images for performance</item>
+    /// <item>Provides WPF-compatible ImageBrush objects for UI binding</item>
+    /// <item>Handles different wallpaper formats and scaling options</item>
+    /// <item>Automatically detects wallpaper changes for dynamic updates</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The service implements intelligent caching to avoid repeatedly loading the same
+    /// wallpaper image, which improves performance and reduces memory usage.
+    /// </para>
+    /// <para>
+    /// Wallpapers are automatically scaled and positioned using UniformToFill stretch
+    /// to provide optimal visual appearance across different screen sizes and resolutions.
+    /// </para>
+    /// </remarks>
     public class WallpaperService
     {
+        /// <summary>
+        /// Singleton instance of the WallpaperService.
+        /// </summary>
         private static WallpaperService? _instance;
+        
+        /// <summary>
+        /// Gets the singleton instance of the WallpaperService.
+        /// </summary>
+        /// <value>The global WallpaperService instance.</value>
         public static WallpaperService Instance => _instance ?? (_instance = new WallpaperService());
         
+        /// <summary>
+        /// Cached ImageBrush containing the current wallpaper to avoid redundant loading.
+        /// </summary>
         private ImageBrush? _cachedWallpaper;
+        
+        /// <summary>
+        /// Path of the last loaded wallpaper for cache validation.
+        /// </summary>
         private string? _lastWallpaperPath;
         
+        /// <summary>
+        /// Retrieves the file path of the currently active Windows desktop wallpaper.
+        /// </summary>
+        /// <returns>
+        /// The full file path to the current wallpaper image, or an empty string if no wallpaper is set.
+        /// </returns>
+        /// <remarks>
+        /// This method queries the Windows registry to determine the current wallpaper path.
+        /// The path may point to various image formats supported by Windows.
+        /// </remarks>
         public string GetCurrentWallpaperPath()
         {
             return GetWallpaperPath() ?? string.Empty;
         }
         
+        /// <summary>
+        /// Retrieves the current Windows desktop wallpaper as a WPF ImageBrush for UI use.
+        /// </summary>
+        /// <returns>
+        /// An ImageBrush containing the current wallpaper configured for optimal display,
+        /// or null if the wallpaper cannot be loaded.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This method provides intelligent caching to avoid repeatedly loading the same wallpaper:
+        /// <list type="bullet">
+        /// <item>Returns cached wallpaper if the path hasn't changed</item>
+        /// <item>Loads and caches new wallpaper if path has changed</item>
+        /// <item>Configures ImageBrush with appropriate scaling and alignment</item>
+        /// <item>Freezes the ImageBrush for better performance and thread-safety</item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// The returned ImageBrush is configured with UniformToFill stretch mode and center
+        /// alignment to provide optimal visual appearance on different screen sizes.
+        /// </para>
+        /// </remarks>
         public ImageBrush? GetCurrentWallpaper()
         {
             var currentPath = GetWallpaperPath();

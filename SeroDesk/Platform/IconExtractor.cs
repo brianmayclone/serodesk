@@ -7,10 +7,77 @@ using System.Windows.Media.Imaging;
 
 namespace SeroDesk.Platform
 {
+    /// <summary>
+    /// Provides high-performance icon extraction and caching functionality for files, applications, and system resources.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The IconExtractor class serves as the central component for extracting and managing application icons
+    /// throughout the SeroDesk interface. It provides:
+    /// <list type="bullet">
+    /// <item>Efficient icon extraction from executable files and shortcuts</item>
+    /// <item>System icon retrieval for common shell objects</item>
+    /// <item>Intelligent caching to improve performance and reduce system calls</item>
+    /// <item>Support for both large and small icon variants</item>
+    /// <item>Integration with Windows Shell APIs for maximum compatibility</item>
+    /// <item>Proper resource management to prevent memory leaks</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The class uses Windows Shell API (SHGetFileInfo) and native icon extraction methods
+    /// to ensure compatibility with all types of Windows applications, including:
+    /// <list type="bullet">
+    /// <item>Traditional Win32 applications</item>
+    /// <item>UWP/Store applications</item>
+    /// <item>.NET applications</item>
+    /// <item>Portable executables</item>
+    /// <item>Shell shortcuts and links</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// All extracted icons are automatically cached using file paths as keys to minimize
+    /// redundant extraction operations and improve UI responsiveness.
+    /// </para>
+    /// </remarks>
     public static class IconExtractor
     {
+        /// <summary>
+        /// Cache dictionary storing extracted icons to improve performance and reduce system calls.
+        /// </summary>
+        /// <remarks>
+        /// Icons are cached using a combination of file path and size preference as the key.
+        /// This prevents redundant extraction operations for frequently accessed files.
+        /// </remarks>
         private static readonly Dictionary<string, ImageSource> _iconCache = new();
         
+        /// <summary>
+        /// Extracts and returns the icon associated with a specific file or application.
+        /// </summary>
+        /// <param name="filePath">The full path to the file or executable from which to extract the icon.</param>
+        /// <param name="largeIcon">True to extract a large (32x32) icon; false for small (16x16) icon.</param>
+        /// <returns>
+        /// An ImageSource containing the extracted icon that can be used in WPF controls,
+        /// or null if extraction fails or the file doesn't exist.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This method first checks the internal cache for a previously extracted icon.
+        /// If not found, it uses Windows Shell APIs to extract the icon directly from the file.
+        /// </para>
+        /// <para>
+        /// The extraction process handles various file types including:
+        /// <list type="bullet">
+        /// <item>Executable files (.exe)</item>
+        /// <item>Dynamic libraries (.dll) with icon resources</item>
+        /// <item>Shortcut files (.lnk)</item>
+        /// <item>Any file type with an associated icon</item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// All successfully extracted icons are automatically cached for future requests.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when filePath is null or empty.</exception>
         public static ImageSource? GetIconForFile(string filePath, bool largeIcon = true)
         {
             var cacheKey = $"{filePath}_{largeIcon}";
