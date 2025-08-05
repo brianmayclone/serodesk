@@ -1,0 +1,655 @@
+<Window x:Class="SeroDesk.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Settings"
+        Height="700" Width="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="Transparent"
+        AllowsTransparency="True"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+    
+    <Window.Resources>
+        <!-- Windows 11 Colors -->
+        <SolidColorBrush x:Key="Win11Background" Color="#F3F3F3"/>
+        <SolidColorBrush x:Key="Win11DarkBackground" Color="#202020"/>
+        <SolidColorBrush x:Key="Win11Accent" Color="#0078D4"/>
+        <SolidColorBrush x:Key="Win11CardBackground" Color="White"/>
+        <SolidColorBrush x:Key="Win11CardBorder" Color="#E5E5E5"/>
+        <SolidColorBrush x:Key="Win11TextPrimary" Color="#1A1A1A"/>
+        <SolidColorBrush x:Key="Win11TextSecondary" Color="#5C5C5C"/>
+        
+        <!-- Navigation Button Style -->
+        <Style x:Key="NavButtonStyle" TargetType="RadioButton">
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,0,16,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Border" 
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Margin="12,2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock x:Name="Icon" 
+                                          Grid.Column="0"
+                                          Text="{TemplateBinding Tag}"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="16"
+                                          VerticalAlignment="Center"
+                                          Margin="12,0,12,0"/>
+                                
+                                <ContentPresenter Grid.Column="1"
+                                                  VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#10000000"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#08000000"/>
+                                <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Win11Accent}"/>
+                                <Setter Property="Foreground" Value="{StaticResource Win11Accent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Settings Card Style -->
+        <Style x:Key="SettingsCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Win11CardBackground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Win11CardBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
+
+        <!-- Toggle Switch Style -->
+        <Style x:Key="Win11ToggleSwitch" TargetType="CheckBox">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <Border x:Name="SwitchBorder"
+                                    Grid.Column="0"
+                                    Width="44" Height="24"
+                                    CornerRadius="12"
+                                    Background="#C6C6C6">
+                                <Ellipse x:Name="SwitchKnob"
+                                         Width="20" Height="20"
+                                         Fill="White"
+                                         HorizontalAlignment="Left"
+                                         Margin="2,0,0,0">
+                                    <Ellipse.RenderTransform>
+                                        <TranslateTransform x:Name="KnobTransform" X="0"/>
+                                    </Ellipse.RenderTransform>
+                                </Ellipse>
+                            </Border>
+                            
+                            <ContentPresenter Grid.Column="1"
+                                              Margin="12,0,0,0"
+                                              VerticalAlignment="Center"/>
+                        </Grid>
+                        
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="KnobTransform"
+                                                             Storyboard.TargetProperty="X"
+                                                             To="20" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseInOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <ColorAnimation Storyboard.TargetName="SwitchBorder"
+                                                            Storyboard.TargetProperty="Background.Color"
+                                                            To="#0078D4" Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="KnobTransform"
+                                                             Storyboard.TargetProperty="X"
+                                                             To="0" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseInOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <ColorAnimation Storyboard.TargetName="SwitchBorder"
+                                                            Storyboard.TargetProperty="Background.Color"
+                                                            To="#C6C6C6" Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Main Window Border -->
+    <Border Background="{StaticResource Win11Background}"
+            CornerRadius="8"
+            BorderBrush="{StaticResource Win11CardBorder}"
+            BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="30" ShadowDepth="0" Opacity="0.3"/>
+        </Border.Effect>
+        
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="48"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar -->
+            <Grid Grid.Row="0" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="Settings"
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"
+                           FontSize="14"
+                           FontWeight="Medium"/>
+
+                <!-- Close Button -->
+                <Button Grid.Column="1"
+                        Width="46" Height="32"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="CloseButton_Click"
+                        Margin="0,0,8,0">
+                    <TextBlock Text="&#xE106;" 
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="10"/>
+                </Button>
+            </Grid>
+
+            <!-- Content Area -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="260"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Navigation Sidebar -->
+                <Border Background="#FAFAFA"
+                        BorderBrush="{StaticResource Win11CardBorder}"
+                        BorderThickness="0,1,1,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,12,0,12">
+                            <RadioButton x:Name="NavGeneral"
+                                         Style="{StaticResource NavButtonStyle}"
+                                         Tag="&#xE713;"
+                                         IsChecked="True"
+                                         Click="NavButton_Click">
+                                <TextBlock Text="General" FontSize="14"/>
+                            </RadioButton>
+
+                            <RadioButton x:Name="NavAppearance"
+                                         Style="{StaticResource NavButtonStyle}"
+                                         Tag="&#xE790;"
+                                         Click="NavButton_Click">
+                                <TextBlock Text="Appearance" FontSize="14"/>
+                            </RadioButton>
+
+                            <RadioButton x:Name="NavDock"
+                                         Style="{StaticResource NavButtonStyle}"
+                                         Tag="&#xE74C;"
+                                         Click="NavButton_Click">
+                                <TextBlock Text="Dock" FontSize="14"/>
+                            </RadioButton>
+
+                            <RadioButton x:Name="NavLaunchpad"
+                                         Style="{StaticResource NavButtonStyle}"
+                                         Tag="&#xE71D;"
+                                         Click="NavButton_Click">
+                                <TextBlock Text="Launchpad" FontSize="14"/>
+                            </RadioButton>
+
+                            <RadioButton x:Name="NavStatusBar"
+                                         Style="{StaticResource NavButtonStyle}"
+                                         Tag="&#xE7F4;"
+                                         Click="NavButton_Click">
+                                <TextBlock Text="Status Bar" FontSize="14"/>
+                            </RadioButton>
+
+                            <RadioButton x:Name="NavNotifications"
+                                         Style="{StaticResource NavButtonStyle}"
+                                         Tag="&#xE7E7;"
+                                         Click="NavButton_Click">
+                                <TextBlock Text="Notifications" FontSize="14"/>
+                            </RadioButton>
+
+                            <RadioButton x:Name="NavStartup"
+                                         Style="{StaticResource NavButtonStyle}"
+                                         Tag="&#xE7BA;"
+                                         Click="NavButton_Click">
+                                <TextBlock Text="Startup" FontSize="14"/>
+                            </RadioButton>
+
+                            <RadioButton x:Name="NavAbout"
+                                         Style="{StaticResource NavButtonStyle}"
+                                         Tag="&#xE946;"
+                                         Click="NavButton_Click">
+                                <TextBlock Text="About" FontSize="14"/>
+                            </RadioButton>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Settings Content -->
+                <ScrollViewer Grid.Column="1" 
+                              VerticalScrollBarVisibility="Auto"
+                              Padding="32,24,32,24">
+                    <Grid x:Name="ContentArea">
+                        <!-- General Settings (Default) -->
+                        <StackPanel x:Name="GeneralSettings" Visibility="Visible">
+                            <TextBlock Text="General"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24"/>
+
+                            <!-- Language -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Text="Language"
+                                               FontSize="16"
+                                               FontWeight="Medium"/>
+                                    
+                                    <ComboBox x:Name="LanguageCombo"
+                                              Grid.Row="1"
+                                              Margin="0,12,0,0"
+                                              Width="200"
+                                              HorizontalAlignment="Left">
+                                        <ComboBoxItem Content="English" IsSelected="True"/>
+                                        <ComboBoxItem Content="Deutsch"/>
+                                        <ComboBoxItem Content="Français"/>
+                                        <ComboBoxItem Content="Español"/>
+                                    </ComboBox>
+                                </Grid>
+                            </Border>
+
+                            <!-- Auto-start -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <StackPanel>
+                                        <TextBlock Text="Start with Windows"
+                                                   FontSize="16"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="Launch SeroDesk automatically when Windows starts"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    
+                                    <CheckBox x:Name="StartWithWindowsToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Shell Replacement -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <StackPanel>
+                                        <TextBlock Text="Shell Replacement Mode"
+                                                   FontSize="16"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="Replace Windows Explorer with SeroDesk (Advanced)"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    
+                                    <CheckBox x:Name="ShellReplacementToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Appearance Settings -->
+                        <StackPanel x:Name="AppearanceSettings" Visibility="Collapsed">
+                            <TextBlock Text="Appearance"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24"/>
+
+                            <!-- Theme -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Text="Theme"
+                                               FontSize="16"
+                                               FontWeight="Medium"/>
+                                    
+                                    <StackPanel Grid.Row="1" 
+                                                Orientation="Horizontal"
+                                                Margin="0,12,0,0">
+                                        <RadioButton x:Name="ThemeLight" 
+                                                     Content="Light" 
+                                                     IsChecked="True"
+                                                     Margin="0,0,24,0"/>
+                                        <RadioButton x:Name="ThemeDark" 
+                                                     Content="Dark"
+                                                     Margin="0,0,24,0"/>
+                                        <RadioButton x:Name="ThemeSystem" 
+                                                     Content="Use system setting"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Transparency Effects -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <StackPanel>
+                                        <TextBlock Text="Transparency effects"
+                                                   FontSize="16"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="Enable glassmorphism and blur effects"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    
+                                    <CheckBox x:Name="TransparencyToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Animation Speed -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Text="Animation speed"
+                                               FontSize="16"
+                                               FontWeight="Medium"/>
+                                    
+                                    <Grid Grid.Row="1" Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <TextBlock Text="Slow" 
+                                                   Grid.Column="0"
+                                                   VerticalAlignment="Center"/>
+                                        <Slider x:Name="AnimationSpeedSlider"
+                                                Grid.Column="1" 
+                                                Minimum="0.5" 
+                                                Maximum="2.0" 
+                                                Value="1.0"
+                                                Margin="12,0"/>
+                                        <TextBlock Text="Fast" 
+                                                   Grid.Column="2"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Dock Settings -->
+                        <StackPanel x:Name="DockSettings" Visibility="Collapsed">
+                            <TextBlock Text="Dock"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24"/>
+
+                            <!-- Dock Position -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Text="Position on screen"
+                                               FontSize="16"
+                                               FontWeight="Medium"/>
+                                    
+                                    <StackPanel Grid.Row="1" 
+                                                Orientation="Horizontal"
+                                                Margin="0,12,0,0">
+                                        <RadioButton x:Name="DockBottom"
+                                                     Content="Bottom" 
+                                                     IsChecked="True"
+                                                     Margin="0,0,24,0"/>
+                                        <RadioButton x:Name="DockLeft"
+                                                     Content="Left"
+                                                     Margin="0,0,24,0"/>
+                                        <RadioButton x:Name="DockRight"
+                                                     Content="Right"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Auto-hide -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <StackPanel>
+                                        <TextBlock Text="Automatically hide and show"
+                                                   FontSize="16"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="Hide the Dock when not in use"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    
+                                    <CheckBox x:Name="AutoHideDockToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Icon Size -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Text="Icon size"
+                                               FontSize="16"
+                                               FontWeight="Medium"/>
+                                    
+                                    <Grid Grid.Row="1" Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <TextBlock Text="Small" 
+                                                   Grid.Column="0"
+                                                   VerticalAlignment="Center"/>
+                                        <Slider x:Name="DockIconSizeSlider"
+                                                Grid.Column="1" 
+                                                Minimum="32" 
+                                                Maximum="64" 
+                                                Value="48"
+                                                TickFrequency="4"
+                                                IsSnapToTickEnabled="True"
+                                                Margin="12,0"/>
+                                        <TextBlock Text="Large" 
+                                                   Grid.Column="2"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- Show recent apps -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <StackPanel>
+                                        <TextBlock Text="Show recent applications"
+                                                   FontSize="16"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="Display recently used apps in the Dock"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    
+                                    <CheckBox x:Name="ShowRecentAppsToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- About Section -->
+                        <StackPanel x:Name="AboutSettings" Visibility="Collapsed">
+                            <TextBlock Text="About"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24"/>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <StackPanel>
+                                    <Image Source="/Resources/SeroDesk_Logo.png"
+                                           Width="64" Height="64"
+                                           HorizontalAlignment="Left"
+                                           Margin="0,0,0,16"/>
+                                    
+                                    <TextBlock Text="SeroDesk"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+                                    
+                                    <TextBlock Text="Version 1.0.0"
+                                               FontSize="14"
+                                               Foreground="{StaticResource Win11TextSecondary}"
+                                               Margin="0,4,0,0"/>
+                                    
+                                    <TextBlock Text="A modern Windows shell replacement with iOS/macOS-style interface"
+                                               FontSize="14"
+                                               Foreground="{StaticResource Win11TextSecondary}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,12,0,0"/>
+                                    
+                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                        <Button Content="Check for updates"
+                                                Padding="12,6"
+                                                Margin="0,0,8,0"/>
+                                        <Button Content="View on GitHub"
+                                                Padding="12,6"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <StackPanel>
+                                    <TextBlock Text="System Information"
+                                               FontSize="16"
+                                               FontWeight="Medium"
+                                               Margin="0,0,0,12"/>
+                                    
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        
+                                        <TextBlock Text="Windows Version:" Grid.Row="0" Grid.Column="0" Margin="0,0,0,8"/>
+                                        <TextBlock x:Name="WindowsVersion" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Foreground="{StaticResource Win11TextSecondary}"/>
+                                        
+                                        <TextBlock Text=".NET Version:" Grid.Row="1" Grid.Column="0" Margin="0,0,0,8"/>
+                                        <TextBlock x:Name="DotNetVersion" Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" Foreground="{StaticResource Win11TextSecondary}"/>
+                                        
+                                        <TextBlock Text="Memory Usage:" Grid.Row="2" Grid.Column="0"/>
+                                        <TextBlock x:Name="MemoryUsage" Grid.Row="2" Grid.Column="1" Foreground="{StaticResource Win11TextSecondary}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

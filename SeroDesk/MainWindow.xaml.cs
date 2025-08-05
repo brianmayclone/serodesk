@@ -183,8 +183,8 @@ namespace SeroDesk
         
         private void InitializeDesktop()
         {
-            // Load desktop icons
-            _viewModel.LoadDesktopIcons();
+            // Desktop functionality is disabled - icons are now managed through LaunchPad
+            // _viewModel.LoadDesktopIcons(); // DISABLED: Use Launchpad instead
             
             // Load widgets
             _viewModel.LoadWidgets(WidgetContainer);

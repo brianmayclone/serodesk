@@ -277,6 +277,32 @@ namespace SeroDesk.Platform
         }
         
         /// <summary>
+        /// Enables blur effects for a window using the modern Windows API.
+        /// </summary>
+        /// <param name="hwnd">The handle to the window for which to enable blur effects.</param>
+        public static void EnableBlurBehind(IntPtr hwnd)
+        {
+            EnableBlurBehindWindow(hwnd);
+        }
+        
+        /// <summary>
+        /// Disables blur effects for a window.
+        /// </summary>
+        /// <param name="hwnd">The handle to the window for which to disable blur effects.</param>
+        public static void DisableBlurBehind(IntPtr hwnd)
+        {
+            var blurBehind = new NativeMethods.DWM_BLURBEHIND
+            {
+                dwFlags = 1, // DWM_BB_ENABLE
+                fEnable = false,
+                hRgnBlur = IntPtr.Zero,
+                fTransitionOnMaximized = false
+            };
+            
+            NativeMethods.DwmEnableBlurBehindWindow(hwnd, ref blurBehind);
+        }
+        
+        /// <summary>
         /// Performs cleanup of all Windows integration operations.
         /// </summary>
         /// <remarks>

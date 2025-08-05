@@ -288,6 +288,22 @@ namespace SeroDesk.Views
             PlayBounceAnimation(sender as Button);
         }
         
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Open Settings window
+                SettingsWindow.ShowSettings();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open Settings: {ex.Message}", "Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            
+            PlayBounceAnimation(sender as Button);
+        }
+        
         private void HomeButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -637,5 +653,231 @@ namespace SeroDesk.Views
                 }
             }
         }
+        
+        #region DockManager Integration Methods
+        
+        /// <summary>
+        /// Updates the dock orientation based on position.
+        /// </summary>
+        /// <param name="position">The new dock position.</param>
+        public void UpdateOrientation(Services.DockPosition position)
+        {
+            try
+            {
+                // Update dock layout based on position
+                // Find the StackPanel that contains the running apps
+                var runningAppsControl = FindName("RunningAppsControl") as ItemsControl;
+                if (runningAppsControl?.ItemsPanel != null)
+                {
+                    // Create new panel template based on position
+                    var panelTemplate = new ItemsPanelTemplate();
+                    FrameworkElementFactory stackPanelFactory;
+                    
+                    switch (position)
+                    {
+                        case Services.DockPosition.Bottom:
+                            // Horizontal layout for bottom dock
+                            stackPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
+                            stackPanelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+                            break;
+                            
+                        case Services.DockPosition.Left:
+                        case Services.DockPosition.Right:
+                            // Vertical layout for side docks
+                            stackPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
+                            stackPanelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
+                            break;
+                            
+                        default:
+                            stackPanelFactory = new FrameworkElementFactory(typeof(StackPanel));
+                            stackPanelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+                            break;
+                    }
+                    
+                    panelTemplate.VisualTree = stackPanelFactory;
+                    runningAppsControl.ItemsPanel = panelTemplate;
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"Dock orientation updated to: {position}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating dock orientation: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Sets the auto-hide behavior of the dock.
+        /// </summary>
+        /// <param name="autoHide">Whether to enable auto-hide.</param>
+        public void SetAutoHide(bool autoHide)
+        {
+            try
+            {
+                // Implementation depends on auto-hide mechanism
+                // This would trigger the auto-hide behavior
+                System.Diagnostics.Debug.WriteLine($"Dock auto-hide set to: {autoHide}");
+                
+                // TODO: Implement actual auto-hide logic based on dock design
+                // This might involve mouse enter/leave events and animation
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting auto-hide: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Sets the icon size for dock items.
+        /// </summary>
+        /// <param name="iconSize">The new icon size in pixels.</param>
+        public void SetIconSize(int iconSize)
+        {
+            try
+            {
+                // Update all dock icons to new size
+                var buttons = FindVisualChildren<Button>(this);
+                foreach (var button in buttons)
+                {
+                    button.Width = iconSize;
+                    button.Height = iconSize;
+                    
+                    // Update image inside button if exists
+                    var image = FindVisualChild<System.Windows.Controls.Image>(button);
+                    if (image != null)
+                    {
+                        image.Width = iconSize - 8; // Slightly smaller than button for padding
+                        image.Height = iconSize - 8;
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"Dock icon size set to: {iconSize}px");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting icon size: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Sets the icon scale multiplier for dock items.
+        /// </summary>
+        /// <param name="iconScale">The scale multiplier (0.5 to 2.0).</param>
+        public void SetIconScale(double iconScale)
+        {
+            try
+            {
+                // Apply scale transform to all dock icons
+                var buttons = FindVisualChildren<Button>(this);
+                foreach (var button in buttons)
+                {
+                    if (button.RenderTransform == null)
+                    {
+                        button.RenderTransform = new System.Windows.Media.ScaleTransform();
+                        button.RenderTransformOrigin = new Point(0.5, 0.5);
+                    }
+                    
+                    if (button.RenderTransform is System.Windows.Media.ScaleTransform scaleTransform)
+                    {
+                        scaleTransform.ScaleX = iconScale;
+                        scaleTransform.ScaleY = iconScale;
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"Dock icon scale set to: {iconScale}x");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting icon scale: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Sets the spacing between dock icons.
+        /// </summary>
+        /// <param name="iconSpacing">The spacing in pixels.</param>
+        public void SetIconSpacing(int iconSpacing)
+        {
+            try
+            {
+                // Update margin for all dock items
+                var buttons = FindVisualChildren<Button>(this);
+                foreach (var button in buttons)
+                {
+                    button.Margin = new Thickness(iconSpacing / 2, 0, iconSpacing / 2, 0);
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"Dock icon spacing set to: {iconSpacing}px");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting icon spacing: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Sets whether to show recent applications in the dock.
+        /// </summary>
+        /// <param name="showRecentApps">Whether to show recent applications.</param>
+        public void SetShowRecentApps(bool showRecentApps)
+        {
+            try
+            {
+                if (_viewModel != null)
+                {
+                    _viewModel.ShowRecentApps = showRecentApps;
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"Show recent apps set to: {showRecentApps}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting show recent apps: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Helper method to find visual children of a specific type.
+        /// </summary>
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    var child = System.Windows.Media.VisualTreeHelper.GetChild(depObj, i);
+                    if (child is T t)
+                    {
+                        yield return t;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Helper method to find a visual child of a specific type.
+        /// </summary>
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T result)
+                    return result;
+                
+                var childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null)
+                    return childOfChild;
+            }
+            
+            return null;
+        }
+        
+        #endregion
     }
 }

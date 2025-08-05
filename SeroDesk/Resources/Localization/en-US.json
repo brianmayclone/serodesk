@@ -1,0 +1,39 @@
+{
+  "General": {
+    "Settings": "Settings",
+    "Language": "Language",
+    "Theme": "Theme",
+    "About": "About",
+    "Close": "Close",
+    "Apply": "Apply",
+    "Cancel": "Cancel",
+    "Save": "Save"
+  },
+  "Dock": {
+    "Position": "Position",
+    "Bottom": "Bottom",
+    "Left": "Left",
+    "Right": "Right", 
+    "AutoHide": "Auto Hide",
+    "IconSize": "Icon Size",
+    "ShowRecentApps": "Show Recent Apps",
+    "ShowDesktop": "Show Desktop",
+    "FileExplorer": "File Explorer",
+    "RecycleBin": "Recycle Bin"
+  },
+  "Appearance": {
+    "LightMode": "Light Mode",
+    "DarkMode": "Dark Mode", 
+    "SystemMode": "System",
+    "Transparency": "Transparency",
+    "AnimationSpeed": "Animation Speed",
+    "EnableTransparency": "Enable Transparency"
+  },
+  "System": {
+    "StartWithWindows": "Start with Windows",
+    "ShellReplacement": "Shell Replacement Mode",
+    "WindowsVersion": "Windows Version",
+    "DotNetVersion": ".NET Version",
+    "MemoryUsage": "Memory Usage"
+  }
+}

@@ -45,6 +45,9 @@ namespace SeroDesk.Views
                 Interval = TimeSpan.FromMilliseconds(500) // Check desktop state every 500ms
             };
             _desktopCheckTimer.Tick += DesktopCheckTimer_Tick;
+            
+            // Register with DockManager for settings application
+            Services.DockManager.Instance.RegisterDockWindow(this);
         }
 
         private void DockWindow_SizeChanged(object sender, SizeChangedEventArgs e)

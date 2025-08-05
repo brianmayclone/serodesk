@@ -16,11 +16,24 @@ namespace SeroDesk.ViewModels
         private ObservableCollection<WindowInfo> _runningApplications;
         private List<string> _pinnedApps;
         private string _pinnedAppsConfigPath;
+        private bool _showRecentApps = true;
         
         public ObservableCollection<WindowInfo> RunningApplications
         {
             get => _runningApplications;
             set { _runningApplications = value; OnPropertyChanged(); }
+        }
+        
+        public bool ShowRecentApps
+        {
+            get => _showRecentApps;
+            set 
+            { 
+                _showRecentApps = value; 
+                OnPropertyChanged();
+                // Update the applications list when this changes
+                UpdateRunningApplications();
+            }
         }
         
         public DockViewModel()
@@ -83,6 +96,7 @@ namespace SeroDesk.ViewModels
                 return false;
             
             // Check if app is pinned
+            bool isPinned = false;
             try
             {
                 var process = System.Diagnostics.Process.GetProcessById((int)window.ProcessId);
@@ -90,6 +104,7 @@ namespace SeroDesk.ViewModels
                 
                 if (!string.IsNullOrEmpty(appPath) && _pinnedApps.Contains(appPath))
                 {
+                    isPinned = true;
                     return true; // Always show pinned apps
                 }
             }
@@ -98,10 +113,10 @@ namespace SeroDesk.ViewModels
             // Don't show system dialogs unless pinned
             var systemTitles = new[] { "Task Manager", "Control Panel", "Settings" };
             if (systemTitles.Any(title => window.Title.Contains(title)))
-                return false;
+                return isPinned; // Only show if pinned
             
-            // Show other running applications
-            return true;
+            // Show other running applications only if ShowRecentApps is enabled
+            return _showRecentApps || isPinned;
         }
         
         public event PropertyChangedEventHandler? PropertyChanged;

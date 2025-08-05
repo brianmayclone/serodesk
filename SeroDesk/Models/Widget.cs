@@ -207,4 +207,28 @@ namespace SeroDesk.Models
             return new Views.Widgets.WeatherWidgetView { DataContext = this };
         }
     }
+    
+    /// <summary>
+    /// Represents a serializable widget configuration for persistent storage.
+    /// </summary>
+    /// <remarks>
+    /// This class contains the essential properties needed to recreate widgets
+    /// after application restart, including type information, positioning,
+    /// sizing, and locking state.
+    /// </remarks>
+    public class SavedWidget
+    {
+        /// <summary>Gets or sets the unique identifier of the widget.</summary>
+        public string Id { get; set; } = string.Empty;
+        /// <summary>Gets or sets the widget type name for recreation.</summary>
+        public string Type { get; set; } = string.Empty;
+        /// <summary>Gets or sets the widget display title.</summary>
+        public string Title { get; set; } = string.Empty;
+        /// <summary>Gets or sets the widget position on the desktop.</summary>
+        public Point Position { get; set; }
+        /// <summary>Gets or sets the widget size dimensions.</summary>
+        public Size Size { get; set; }
+        /// <summary>Gets or sets whether the widget is locked from being moved or resized.</summary>
+        public bool IsLocked { get; set; }
+    }
 }

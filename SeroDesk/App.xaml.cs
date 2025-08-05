@@ -88,9 +88,10 @@ namespace SeroDesk
         /// <remarks>
         /// Service initialization order is critical:
         /// 1. WindowsIntegration - Sets up Win32 API wrappers and DPI awareness
-        /// 2. ExplorerManager - Safely terminates Explorer.exe and assumes shell role
-        /// 3. ServiceManager - Starts background services (notifications, widgets, etc.)
-        /// 4. SettingsManager - Loads user preferences and configuration
+        /// 2. ThemeManager - Initializes theme system and applies user preferences
+        /// 3. ExplorerManager - Safely terminates Explorer.exe and assumes shell role
+        /// 4. ServiceManager - Starts background services (notifications, widgets, etc.)
+        /// 5. SettingsManager - Loads user preferences and configuration
         /// 
         /// Each service is designed as a singleton to ensure consistent state across
         /// the application lifecycle and prevent resource conflicts.
@@ -100,6 +101,23 @@ namespace SeroDesk
             // Initialize platform-specific Windows integration services
             // This sets up DPI awareness, Win32 API wrappers, and system integration
             WindowsIntegration.Initialize();
+            
+            // Initialize theme system EARLY to ensure proper styling
+            // This loads user theme preferences and applies them before UI creation
+            ThemeManager.Instance.LoadThemeSettings();
+            ThemeManager.Instance.ApplyTheme();
+            
+            // Initialize animation system for consistent animation behavior
+            // This loads user animation preferences and applies them globally
+            AnimationManager.Instance.LoadAnimationSettings();
+            
+            // Initialize localization system for multi-language support
+            // This loads user language preferences and applies them immediately
+            LocalizationManager.Instance.LoadLanguageSettings();
+            
+            // Initialize dock management system
+            // This loads dock configuration and prepares for dynamic updates
+            DockManager.Instance.LoadDockSettings();
             
             // Hide the Windows taskbar since we're replacing it with SeroDesk
             // This prevents the original taskbar from interfering with our dock
