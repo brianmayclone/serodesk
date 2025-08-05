@@ -7,6 +7,19 @@ using SeroDesk.Constants;
 
 namespace SeroDesk.Platform
 {
+    /// <summary>
+    /// Represents information about a window in the system for management and display purposes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// WindowInfo encapsulates all relevant data about a system window that SeroDesk
+    /// needs for window management, taskbar display, and user interaction.
+    /// </para>
+    /// <para>
+    /// The class implements INotifyPropertyChanged to support data binding in UI scenarios
+    /// where window information is displayed in lists or controls.
+    /// </para>
+    /// </remarks>
     public class WindowInfo : INotifyPropertyChanged
     {
         private string _title = string.Empty;
@@ -60,15 +73,71 @@ namespace SeroDesk.Platform
         }
     }
     
+    /// <summary>
+    /// Provides comprehensive window management functionality for the SeroDesk shell environment.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The WindowManager class serves as the central component for interacting with system windows.
+    /// It provides:
+    /// <list type="bullet">
+    /// <item>Enumeration and tracking of all visible system windows</item>
+    /// <item>Window thumbnails and previews using Desktop Window Manager (DWM)</item>
+    /// <item>Window state management (minimize, restore, bring to front)</item>
+    /// <item>Icon extraction for both traditional Win32 and UWP applications</item>
+    /// <item>Automatic refresh of window list for dynamic updates</item>
+    /// <item>Integration with taskbar and window switching functionality</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The class uses a singleton pattern to ensure consistent window state across the application
+    /// and implements IDisposable for proper cleanup of system resources and timers.
+    /// </para>
+    /// <para>
+    /// Window information is automatically refreshed at regular intervals defined by
+    /// <see cref="UIConstants.WindowUpdateIntervalMs"/> to keep the UI synchronized with
+    /// the actual system state.
+    /// </para>
+    /// </remarks>
     public class WindowManager : IDisposable
     {
+        /// <summary>
+        /// Singleton instance of the WindowManager.
+        /// </summary>
         private static WindowManager? _instance;
+        
+        /// <summary>
+        /// Observable collection of all tracked windows for UI binding.
+        /// </summary>
         private readonly ObservableCollection<WindowInfo> _windows;
+        
+        /// <summary>
+        /// Timer that periodically refreshes the window list to maintain accuracy.
+        /// </summary>
         private readonly System.Timers.Timer _updateTimer;
+        
+        /// <summary>
+        /// Indicates whether this instance has been disposed.
+        /// </summary>
         private bool _disposed = false;
         
+        /// <summary>
+        /// Gets the singleton instance of the WindowManager.
+        /// </summary>
+        /// <value>The global WindowManager instance.</value>
+        /// <remarks>
+        /// The instance is created on first access and maintained throughout the application lifetime.
+        /// </remarks>
         public static WindowManager Instance => _instance ?? (_instance = new WindowManager());
         
+        /// <summary>
+        /// Gets the observable collection of all tracked windows.
+        /// </summary>
+        /// <value>A collection of WindowInfo objects representing visible system windows.</value>
+        /// <remarks>
+        /// This collection is automatically updated and can be bound to UI elements for
+        /// displaying window lists, taskbars, or switchers.
+        /// </remarks>
         public ObservableCollection<WindowInfo> Windows => _windows;
         
         private WindowManager()

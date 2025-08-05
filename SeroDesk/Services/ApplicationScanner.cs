@@ -7,6 +7,24 @@ using System.Runtime.InteropServices;
 
 namespace SeroDesk.Services
 {
+    /// <summary>
+    /// Provides functionality to scan and discover installed applications on the Windows system.
+    /// This service searches through Start Menu shortcuts, registry entries, and common program locations
+    /// to build a comprehensive list of available applications for the desktop shell.
+    /// </summary>
+    /// <remarks>
+    /// The ApplicationScanner performs the following operations:
+    /// <list type="bullet">
+    /// <item><description>Scans Windows Start Menu for application shortcuts</description></item>
+    /// <item><description>Reads registry entries for installed programs</description></item>
+    /// <item><description>Searches desktop and common program directories</description></item>
+    /// <item><description>Extracts application icons and metadata</description></item>
+    /// <item><description>Filters out system applications and duplicates</description></item>
+    /// </list>
+    /// 
+    /// This class is designed to work asynchronously to avoid blocking the UI thread
+    /// during the potentially time-consuming scanning process.
+    /// </remarks>
     public class ApplicationScanner
     {
         private static readonly string[] CommonProgramFolders = new[]

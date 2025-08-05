@@ -6,41 +6,162 @@ using System.Windows.Media;
 
 namespace SeroDesk.Models
 {
+    /// <summary>
+    /// Represents an application icon with all associated metadata and UI state information.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The AppIcon class encapsulates all information needed to display and interact with
+    /// an application in the SeroDesk interface. This includes:
+    /// <list type="bullet">
+    /// <item>Basic application information (name, path, publisher)</item>
+    /// <item>Visual representation (icon image, position, scale)</item>
+    /// <item>Launch parameters (arguments, working directory)</item>
+    /// <item>UI state (selection, dragging, grouping)</item>
+    /// <item>Layout information (grid position, grouping)</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The class implements INotifyPropertyChanged to support data binding in WPF,
+    /// ensuring the UI automatically updates when properties change.
+    /// </para>
+    /// <para>
+    /// AppIcon instances can exist independently or as part of an AppGroup for
+    /// organized application collections.
+    /// </para>
+    /// </remarks>
     public class AppIcon : INotifyPropertyChanged
     {
+        /// <summary>
+        /// The display name of the application.
+        /// </summary>
         private string _name = string.Empty;
+        
+        /// <summary>
+        /// The full path to the application's executable file.
+        /// </summary>
         private string _executablePath = string.Empty;
+        
+        /// <summary>
+        /// Command-line arguments to pass when launching the application.
+        /// </summary>
         private string _arguments = string.Empty;
+        
+        /// <summary>
+        /// The working directory to use when launching the application.
+        /// </summary>
         private string _workingDirectory = string.Empty;
+        
+        /// <summary>
+        /// The icon image to display for this application.
+        /// </summary>
         private ImageSource? _iconImage;
+        
+        /// <summary>
+        /// The current position of the icon in canvas coordinates.
+        /// </summary>
         private Point _position;
+        
+        /// <summary>
+        /// The grid row position for layout calculations.
+        /// </summary>
         private int _gridRow;
+        
+        /// <summary>
+        /// The grid column position for layout calculations.
+        /// </summary>
         private int _gridColumn;
+        
+        /// <summary>
+        /// Indicates whether this icon is currently selected in the UI.
+        /// </summary>
         private bool _isSelected;
+        
+        /// <summary>
+        /// Indicates whether this icon is currently being dragged.
+        /// </summary>
         private bool _isDragging;
+        
+        /// <summary>
+        /// The current visual scale factor for the icon.
+        /// </summary>
         private double _scale = 1.0;
+        
+        /// <summary>
+        /// The publisher or company name of the application.
+        /// </summary>
         private string _publisher = string.Empty;
         
+        /// <summary>
+        /// Gets or sets the unique identifier for this application icon.
+        /// </summary>
+        /// <value>
+        /// A unique string identifier, automatically generated as a GUID for new instances.
+        /// </value>
+        /// <remarks>
+        /// This ID is used for configuration persistence, grouping, and internal references.
+        /// It should remain stable across application sessions.
+        /// </remarks>
         public string Id { get; set; } = Guid.NewGuid().ToString();
         
+        /// <summary>
+        /// Gets or sets the display name of the application.
+        /// </summary>
+        /// <value>
+        /// The human-readable name shown to users in the LaunchPad interface.
+        /// </value>
+        /// <remarks>
+        /// This is typically the application's friendly name rather than the executable filename.
+        /// For example, "Microsoft Word" rather than "winword.exe".
+        /// </remarks>
         public string Name
         {
             get => _name;
             set { _name = value; OnPropertyChanged(); }
         }
         
+        /// <summary>
+        /// Gets or sets the full path to the application's executable file.
+        /// </summary>
+        /// <value>
+        /// The complete file system path to the .exe file that launches this application.
+        /// </value>
+        /// <remarks>
+        /// This path is used for launching the application and extracting icon information.
+        /// It should be a valid, accessible file path on the local system.
+        /// </remarks>
         public string ExecutablePath
         {
             get => _executablePath;
             set { _executablePath = value; OnPropertyChanged(); }
         }
         
+        /// <summary>
+        /// Gets or sets the command-line arguments to pass when launching the application.
+        /// </summary>
+        /// <value>
+        /// A string containing command-line arguments, or empty if no arguments are needed.
+        /// </value>
+        /// <remarks>
+        /// These arguments are passed to the application when it's launched through SeroDesk.
+        /// Common examples include file paths to open or startup options.
+        /// </remarks>
         public string Arguments
         {
             get => _arguments;
             set { _arguments = value; OnPropertyChanged(); }
         }
         
+        /// <summary>
+        /// Gets or sets the working directory to use when launching the application.
+        /// </summary>
+        /// <value>
+        /// The directory path to set as the current working directory, or empty to use the default.
+        /// </value>
+        /// <remarks>
+        /// Some applications require a specific working directory to function correctly.
+        /// If empty, the system will use the application's installation directory as the default.
+        /// </remarks>
         public string WorkingDirectory
         {
             get => _workingDirectory;

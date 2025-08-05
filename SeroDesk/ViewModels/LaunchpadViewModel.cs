@@ -14,50 +14,177 @@ using SeroDesk.Platform;
 
 namespace SeroDesk.ViewModels
 {
+    /// <summary>
+    /// ViewModel for the LaunchPad component that manages all application icons, groups, and layout persistence.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The LaunchpadViewModel is the central component for managing the iOS-style application launcher.
+    /// It handles:
+    /// <list type="bullet">
+    /// <item>Loading and scanning all installed applications</item>
+    /// <item>Automatic intelligent categorization using <see cref="AppCategorizer"/></item>
+    /// <item>Persistent layout configuration in launchpad_config.json</item>
+    /// <item>Search and filtering functionality</item>
+    /// <item>Pagination for large application collections</item>
+    /// <item>Group management (create, modify, delete groups)</item>
+    /// <item>Drag-and-drop repositioning</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The class uses a unified configuration system that replaces the legacy desktop layout approach.
+    /// All application positions, groups, and user customizations are stored in a single JSON file
+    /// for consistency and performance.
+    /// </para>
+    /// <para>
+    /// Applications are automatically categorized on first run, but users can manually reorganize
+    /// them as needed. The layout is immediately persisted to prevent data loss.
+    /// </para>
+    /// </remarks>
     public class LaunchpadViewModel : INotifyPropertyChanged
     {
+        /// <summary>
+        /// Complete collection of all applications found on the system.
+        /// </summary>
         private ObservableCollection<AppIcon> _allApplications;
+        
+        /// <summary>
+        /// Filtered collection of applications based on current search criteria.
+        /// </summary>
         private ObservableCollection<AppIcon> _filteredApplications;
+        
+        /// <summary>
+        /// Mixed collection of individual apps and groups for display in the LaunchPad UI.
+        /// </summary>
+        /// <remarks>
+        /// This collection contains both AppIcon and AppGroup objects that represent
+        /// the current page's display items after filtering and pagination.
+        /// </remarks>
         private ObservableCollection<object> _displayItems;
+        
+        /// <summary>
+        /// Collection of application groups created by categorization or user action.
+        /// </summary>
         private ObservableCollection<AppGroup> _appGroups;
+        
+        /// <summary>
+        /// Current search text for filtering applications.
+        /// </summary>
         private string _searchText = string.Empty;
+        
+        /// <summary>
+        /// Current Windows wallpaper as a brush for background display.
+        /// </summary>
         private ImageBrush? _currentWallpaper;
+        
+        /// <summary>
+        /// Zero-based index of the currently displayed page.
+        /// </summary>
         private int _currentPage = 0;
-        private int _itemsPerPage = 35; // 7x5 grid = 35 items per page (reduced for larger icons)
+        
+        /// <summary>
+        /// Maximum number of items to display per page (7x5 grid = 35 items).
+        /// </summary>
+        private int _itemsPerPage = 35;
+        
+        /// <summary>
+        /// Collection of pages, each containing a collection of display items.
+        /// </summary>
         private ObservableCollection<ObservableCollection<object>> _pages;
+        
+        /// <summary>
+        /// Current layout configuration containing groups, positions, and settings.
+        /// </summary>
         private LayoutConfiguration? _layoutConfig;
+        
+        /// <summary>
+        /// Full path to the configuration file for layout persistence.
+        /// </summary>
         private string _configPath;
         
+        /// <summary>
+        /// Gets or sets the complete collection of all applications discovered on the system.
+        /// </summary>
+        /// <value>
+        /// An observable collection containing all AppIcon instances representing installed applications.
+        /// This collection is populated during the initial scan and includes both categorized and uncategorized apps.
+        /// </value>
         public ObservableCollection<AppIcon> AllApplications
         {
             get => _allApplications;
             set { _allApplications = value; OnPropertyChanged(); }
         }
         
+        /// <summary>
+        /// Gets or sets the filtered collection of applications based on current search criteria.
+        /// </summary>
+        /// <value>
+        /// An observable collection containing AppIcon instances that match the current search text.
+        /// When no search is active, this contains the same items as <see cref="AllApplications"/>.
+        /// </value>
         public ObservableCollection<AppIcon> FilteredApplications
         {
             get => _filteredApplications;
             set { _filteredApplications = value; OnPropertyChanged(); }
         }
         
+        /// <summary>
+        /// Gets or sets the mixed collection of items currently displayed in the LaunchPad UI.
+        /// </summary>
+        /// <value>
+        /// An observable collection containing both AppIcon and AppGroup objects representing
+        /// the current page's content after applying search filters and pagination.
+        /// </value>
+        /// <remarks>
+        /// This collection is what the UI binds to for displaying the grid of icons and groups.
+        /// It's automatically updated when search text changes or pages are navigated.
+        /// </remarks>
         public ObservableCollection<object> DisplayItems
         {
             get => _displayItems;
             set { _displayItems = value; OnPropertyChanged(); }
         }
         
+        /// <summary>
+        /// Gets or sets the collection of application groups created through categorization or user action.
+        /// </summary>
+        /// <value>
+        /// An observable collection containing all AppGroup instances. Groups are created automatically
+        /// during initial categorization or manually by users dragging apps together.
+        /// </value>
         public ObservableCollection<AppGroup> AppGroups
         {
             get => _appGroups;
             set { _appGroups = value; OnPropertyChanged(); }
         }
         
+        /// <summary>
+        /// Gets or sets the current Windows wallpaper as an ImageBrush for background display.
+        /// </summary>
+        /// <value>
+        /// An ImageBrush containing the current Windows desktop wallpaper, or null if unavailable.
+        /// </value>
+        /// <remarks>
+        /// This property is automatically populated by loading the current Windows wallpaper
+        /// to provide visual consistency with the desktop environment.
+        /// </remarks>
         public ImageBrush? CurrentWallpaper
         {
             get => _currentWallpaper;
             set { _currentWallpaper = value; OnPropertyChanged(); }
         }
         
+        /// <summary>
+        /// Gets or sets the current search text for filtering applications.
+        /// </summary>
+        /// <value>
+        /// The search string used to filter applications by name. Setting this property
+        /// automatically triggers the filtering process and updates the display.
+        /// </value>
+        /// <remarks>
+        /// The search is case-insensitive and matches partial application names.
+        /// An empty string shows all applications.
+        /// </remarks>
         public string SearchText
         {
             get => _searchText;
@@ -90,6 +217,25 @@ namespace SeroDesk.ViewModels
         
         public bool HasMultiplePages => TotalPages > 1;
         
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LaunchpadViewModel"/> class.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The constructor performs the following initialization:
+        /// <list type="number">
+        /// <item>Initializes all observable collections for applications, groups, and pages</item>
+        /// <item>Sets up the configuration file path in LocalApplicationData</item>
+        /// <item>Loads the current Windows wallpaper for background display</item>
+        /// <item>Cleans up any legacy configuration files from previous versions</item>
+        /// <item>Loads the saved layout configuration or creates a default one</item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// The configuration system uses a unified approach with launchpad_config.json to avoid
+        /// conflicts with legacy desktop layout systems that are no longer used.
+        /// </para>
+        /// </remarks>
         public LaunchpadViewModel()
         {
             _allApplications = new ObservableCollection<AppIcon>();
@@ -100,7 +246,7 @@ namespace SeroDesk.ViewModels
             
             _configPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SeroDesk", "launchpad_config.json"); // Eindeutiger Name um Konflikte zu vermeiden
+                "SeroDesk", "launchpad_config.json");
             
             // Load Windows wallpaper
             LoadWallpaper();
@@ -108,6 +254,29 @@ namespace SeroDesk.ViewModels
             LoadLayoutConfiguration();
         }
         
+        /// <summary>
+        /// Asynchronously loads all installed applications from the system and applies layout configuration.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <remarks>
+        /// <para>
+        /// This is the primary method for populating the LaunchPad with applications. The process:
+        /// <list type="number">
+        /// <item>Clears existing application collections</item>
+        /// <item>Adds a set of common test applications (Notepad, Calculator, etc.)</item>
+        /// <item>Scans the system for all installed applications using <see cref="ApplicationScanner"/></item>
+        /// <item>On first run, automatically categorizes applications using <see cref="AppCategorizer"/></item>
+        /// <item>On subsequent runs, restores the saved layout configuration</item>
+        /// <item>Updates all display collections and notifies the UI</item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// The method is designed to handle both first-time initialization (with automatic categorization)
+        /// and regular application starts (with layout restoration). All errors are logged but do not
+        /// prevent the application from starting with a basic set of test applications.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="Exception">May throw various exceptions during application scanning, but these are caught and logged.</exception>
         public async Task LoadAllApplicationsAsync()
         {
             try
