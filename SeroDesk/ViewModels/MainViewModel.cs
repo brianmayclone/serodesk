@@ -9,7 +9,8 @@ namespace SeroDesk.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
-        private DesktopViewModel _desktopViewModel;
+        // Desktop functionality is DISABLED - only LaunchPad is used
+        // private DesktopViewModel _desktopViewModel; // REMOVED
         private LaunchpadViewModel _launchpadViewModel;
         private bool _isDesktopVisible = true;
         private ObservableCollection<AppIcon> _runningApplications;
@@ -17,11 +18,11 @@ namespace SeroDesk.ViewModels
         private double _brightnessLevel = 75;
         private double _volumeLevel = 50;
         
-        public DesktopViewModel Desktop
-        {
-            get => _desktopViewModel;
-            set { _desktopViewModel = value; OnPropertyChanged(); }
-        }
+        /// <summary>
+        /// Desktop functionality is disabled - LaunchPad handles all applications
+        /// </summary>
+        [Obsolete("Desktop functionality is disabled. Use Launchpad instead.")]
+        public ObservableCollection<AppIcon> DesktopIcons => new ObservableCollection<AppIcon>();
         
         public LaunchpadViewModel Launchpad
         {
@@ -34,8 +35,6 @@ namespace SeroDesk.ViewModels
             get => _isDesktopVisible;
             set { _isDesktopVisible = value; OnPropertyChanged(); }
         }
-        
-        public ObservableCollection<AppIcon> DesktopIcons => Desktop.DesktopIcons;
         
         public ObservableCollection<AppIcon> RunningApplications
         {
@@ -65,16 +64,22 @@ namespace SeroDesk.ViewModels
         
         public MainViewModel()
         {
-            _desktopViewModel = new DesktopViewModel();
+            // Desktop functionality is DISABLED - only LaunchPad is used
+            // _desktopViewModel = new DesktopViewModel(); // REMOVED
             _launchpadViewModel = new LaunchpadViewModel();
             _runningApplications = new ObservableCollection<AppIcon>();
             _notifications = new ObservableCollection<object>();
         }
         
+        /// <summary>
+        /// Desktop icons are not used in this app - LaunchPad handles all apps
+        /// </summary>
+        [Obsolete("Desktop functionality is disabled. Use Launchpad.LoadAllApplicationsAsync() instead.")]
         public void LoadDesktopIcons()
         {
             // Desktop icons are not used in this app - LaunchPad handles all apps
-            // Desktop.LoadDesktopIcons(); // DISABLED
+            // Method kept for compatibility but does nothing
+            System.Diagnostics.Debug.WriteLine("LoadDesktopIcons called but Desktop functionality is disabled");
         }
         
         public async void LoadAllAppsForSpringBoard()

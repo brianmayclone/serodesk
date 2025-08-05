@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using SeroDesk.Constants;
 
 namespace SeroDesk.Platform
 {
@@ -74,7 +75,7 @@ namespace SeroDesk.Platform
         {
             _windows = new ObservableCollection<WindowInfo>();
             
-            _updateTimer = new System.Timers.Timer(1000); // Update every second
+            _updateTimer = new System.Timers.Timer(UIConstants.WindowUpdateIntervalMs);
             _updateTimer.Elapsed += (s, e) => RefreshWindowList();
             _updateTimer.Start();
             

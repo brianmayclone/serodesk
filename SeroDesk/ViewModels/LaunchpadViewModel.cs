@@ -104,6 +104,7 @@ namespace SeroDesk.ViewModels
             
             // Load Windows wallpaper
             LoadWallpaper();
+            CleanupLegacyFiles(); // Remove old desktop_layout.json files
             LoadLayoutConfiguration();
         }
         
@@ -633,6 +634,39 @@ namespace SeroDesk.ViewModels
             foreach (var app in orderedApps)
             {
                 AllApplications.Add(app);
+            }
+        }
+        
+        /// <summary>
+        /// Cleans up legacy desktop_layout.json files that are no longer used
+        /// since the DesktopViewModel was removed.
+        /// </summary>
+        private void CleanupLegacyFiles()
+        {
+            try
+            {
+                var configDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "SeroDesk");
+                
+                var legacyFiles = new[]
+                {
+                    Path.Combine(configDir, "desktop_layout.json"),
+                    Path.Combine(configDir, "layout_config.json") // Also remove this if it exists
+                };
+                
+                foreach (var legacyFile in legacyFiles)
+                {
+                    if (File.Exists(legacyFile))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"CleanupLegacyFiles: Removing legacy file: {legacyFile}");
+                        File.Delete(legacyFile);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CleanupLegacyFiles: Error cleaning up legacy files: {ex.Message}");
             }
         }
         
