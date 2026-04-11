@@ -53,78 +53,68 @@ namespace SeroDesk.Views
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("LoadSystemIcons: Starting to load system icons");
-                
-                // Load Explorer icon - Try multiple approaches
-                var explorerImage = this.FindName("ExplorerIcon") as System.Windows.Controls.Image;
-                if (explorerImage != null)
+                // Icons are inside ControlTemplates, so FindName won't work.
+                // We must walk the visual tree to find Image elements by x:Name.
+                LoadSystemIconDelayed("ExplorerIcon", () =>
                 {
-                    System.Diagnostics.Debug.WriteLine("ExplorerIcon image found");
-                    
-                    // Try Computer icon first
-                    var explorerIconSource = IconExtractor.GetSystemIcon(Platform.SystemIconType.Computer);
-                    if (explorerIconSource != null)
-                    {
-                        explorerImage.Source = explorerIconSource;
-                        System.Diagnostics.Debug.WriteLine("Explorer icon loaded from Computer");
-                    }
-                    else
-                    {
-                        // Fallback: Try loading directly from explorer.exe
-                        explorerIconSource = IconExtractor.GetIconForFile(@"C:\Windows\explorer.exe", true);
-                        if (explorerIconSource != null)
-                        {
-                            explorerImage.Source = explorerIconSource;
-                            System.Diagnostics.Debug.WriteLine("Explorer icon loaded from explorer.exe");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("Failed to load Explorer icon");
-                        }
-                    }
-                }
-                else
+                    var icon = IconExtractor.GetSystemIcon(Platform.SystemIconType.Computer)
+                            ?? IconExtractor.GetIconForFile(@"C:\Windows\explorer.exe", true);
+                    return icon;
+                });
+
+                LoadSystemIconDelayed("RecycleBinIcon", () =>
                 {
-                    System.Diagnostics.Debug.WriteLine("ExplorerIcon image not found in XAML");
-                }
-                
-                // Load Recycle Bin icon
-                var recycleBinImage = this.FindName("RecycleBinIcon") as System.Windows.Controls.Image;
-                if (recycleBinImage != null)
-                {
-                    System.Diagnostics.Debug.WriteLine("RecycleBinIcon image found");
-                    
-                    var recycleBinIconSource = IconExtractor.GetSystemIcon(Platform.SystemIconType.RecycleBin);
-                    if (recycleBinIconSource != null)
-                    {
-                        recycleBinImage.Source = recycleBinIconSource;
-                        System.Diagnostics.Debug.WriteLine("Recycle Bin icon loaded");
-                    }
-                    else
-                    {
-                        // Fallback: Try loading from shell32.dll
-                        recycleBinIconSource = IconExtractor.GetIconForFile(@"C:\Windows\System32\shell32.dll", true);
-                        if (recycleBinIconSource != null)
-                        {
-                            recycleBinImage.Source = recycleBinIconSource;
-                            System.Diagnostics.Debug.WriteLine("Recycle Bin icon loaded from shell32.dll");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("Failed to load Recycle Bin icon");
-                        }
-                    }
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("RecycleBinIcon image not found in XAML");
-                }
+                    var icon = IconExtractor.GetSystemIcon(Platform.SystemIconType.RecycleBin)
+                            ?? IconExtractor.GetIconForFile(@"C:\Windows\System32\shell32.dll", true);
+                    return icon;
+                });
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Exception in LoadSystemIcons: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                Services.Logger.Error("LoadSystemIcons failed", ex);
             }
+        }
+
+        private void LoadSystemIconDelayed(string imageName, Func<System.Windows.Media.ImageSource?> iconLoader)
+        {
+            // Delay to ensure ControlTemplates have been applied
+            this.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    var image = FindVisualChildByName<System.Windows.Controls.Image>(this, imageName);
+                    if (image != null)
+                    {
+                        var iconSource = iconLoader();
+                        if (iconSource != null)
+                        {
+                            image.Source = iconSource;
+                            Services.Logger.Debug($"Loaded system icon: {imageName}");
+                        }
+                    }
+                    else
+                    {
+                        Services.Logger.Warn($"Image '{imageName}' not found in visual tree");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Services.Logger.Error($"Failed to load {imageName}", ex);
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private static T? FindVisualChildByName<T>(DependencyObject parent, string name) where T : FrameworkElement
+        {
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T element && element.Name == name)
+                    return element;
+                var result = FindVisualChildByName<T>(child, name);
+                if (result != null) return result;
+            }
+            return null;
         }
         
         private void AnimateIn()
@@ -400,40 +390,26 @@ namespace SeroDesk.Views
         private void PlayBounceAnimation(Button? button)
         {
             if (button == null) return;
-            
-            var bounceStoryboard = new Storyboard();
-            
-            var scaleUpX = new DoubleAnimation
+
+            // Ensure we have a ScaleTransform we can animate
+            var scaleTransform = button.RenderTransform as System.Windows.Media.ScaleTransform;
+            if (scaleTransform == null)
             {
-                To = 1.3,
-                Duration = TimeSpan.FromMilliseconds(100),
-                AutoReverse = true,
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            
-            var scaleUpY = new DoubleAnimation
-            {
-                To = 1.3,
-                Duration = TimeSpan.FromMilliseconds(100),
-                AutoReverse = true,
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            
-            Storyboard.SetTarget(scaleUpX, button);
-            Storyboard.SetTarget(scaleUpY, button);
-            Storyboard.SetTargetProperty(scaleUpX, new PropertyPath("RenderTransform.ScaleX"));
-            Storyboard.SetTargetProperty(scaleUpY, new PropertyPath("RenderTransform.ScaleY"));
-            
-            // Ensure button has a ScaleTransform
-            if (button.RenderTransform == null)
-            {
-                button.RenderTransform = new System.Windows.Media.ScaleTransform();
+                scaleTransform = new System.Windows.Media.ScaleTransform(1, 1);
+                button.RenderTransform = scaleTransform;
                 button.RenderTransformOrigin = new Point(0.5, 0.5);
             }
-            
-            bounceStoryboard.Children.Add(scaleUpX);
-            bounceStoryboard.Children.Add(scaleUpY);
-            bounceStoryboard.Begin();
+
+            var bounceAnim = new DoubleAnimation
+            {
+                To = 1.3,
+                Duration = TimeSpan.FromMilliseconds(100),
+                AutoReverse = true,
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, bounceAnim);
+            scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, bounceAnim);
         }
         
         

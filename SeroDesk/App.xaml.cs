@@ -180,14 +180,12 @@ namespace SeroDesk
         {
             _taskbarHideTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(5) // Check every 5 seconds (was 2s)
+                Interval = TimeSpan.FromSeconds(2) // Check every 2 seconds
             };
             _taskbarHideTimer.Tick += (sender, e) =>
             {
-                if (!TaskbarManager.IsTaskbarHidden)
-                {
-                    TaskbarManager.ForceHideTaskbar();
-                }
+                // Always force-hide because Windows 11 can restore the taskbar at any time
+                TaskbarManager.ForceHideTaskbar();
             };
             _taskbarHideTimer.Start();
         }

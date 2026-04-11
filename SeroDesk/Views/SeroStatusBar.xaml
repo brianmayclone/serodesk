@@ -7,7 +7,6 @@
              Height="36"
              d:DesignWidth="1920">
 
-    <!-- iOS-Style Status Bar -->
     <Border x:Name="StatusBarBackground"
             Background="#00000000"
             BorderThickness="0">
@@ -18,30 +17,30 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Left Side: Signal + Network -->
+            <!-- Left: Signal bars + Network -->
             <StackPanel Grid.Column="0"
                        Orientation="Horizontal"
                        VerticalAlignment="Center">
 
-                <!-- Signal Strength Bars (iOS-style) -->
+                <!-- Signal Strength Bars (use Fill binding with converter) -->
                 <StackPanel Orientation="Horizontal"
-                           VerticalAlignment="Center"
-                           Margin="0,0,6,0">
-                    <Border Width="3" Height="5" Background="White" CornerRadius="1" Margin="0,0,1.5,0"
+                           VerticalAlignment="Bottom"
+                           Margin="0,0,6,0"
+                           Height="16">
+                    <Border Width="3" Height="4" CornerRadius="1" Margin="0,0,1.5,0"
                             VerticalAlignment="Bottom"
-                            Opacity="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=1, FallbackValue=0.3}"/>
-                    <Border Width="3" Height="8" Background="White" CornerRadius="1" Margin="0,0,1.5,0"
+                            Background="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=1}"/>
+                    <Border Width="3" Height="7" CornerRadius="1" Margin="0,0,1.5,0"
                             VerticalAlignment="Bottom"
-                            Opacity="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=2, FallbackValue=0.3}"/>
-                    <Border Width="3" Height="11" Background="White" CornerRadius="1" Margin="0,0,1.5,0"
+                            Background="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=2}"/>
+                    <Border Width="3" Height="10" CornerRadius="1" Margin="0,0,1.5,0"
                             VerticalAlignment="Bottom"
-                            Opacity="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=3, FallbackValue=0.3}"/>
-                    <Border Width="3" Height="14" Background="White" CornerRadius="1"
+                            Background="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=3}"/>
+                    <Border Width="3" Height="13" CornerRadius="1"
                             VerticalAlignment="Bottom"
-                            Opacity="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=4, FallbackValue=0.3}"/>
+                            Background="{Binding SignalStrength, Converter={StaticResource SignalToBrushConverter}, ConverterParameter=4}"/>
                 </StackPanel>
 
-                <!-- Network Type -->
                 <TextBlock Text="{Binding NetworkStatus}"
                           Foreground="White"
                           FontSize="13"
@@ -63,7 +62,7 @@
                 </TextBlock.Effect>
             </TextBlock>
 
-            <!-- Right Side: Battery + Exit -->
+            <!-- Right: Exit + Battery -->
             <StackPanel Grid.Column="2"
                        Orientation="Horizontal"
                        HorizontalAlignment="Right"
@@ -97,9 +96,8 @@
                           Margin="0,0,5,0"
                           Opacity="0.95"/>
 
-                <!-- Battery Icon (iOS-style) -->
+                <!-- Battery Icon -->
                 <Grid Width="25" Height="12" VerticalAlignment="Center">
-                    <!-- Battery Outline -->
                     <Border Background="Transparent"
                            BorderBrush="White"
                            BorderThickness="1.2"
@@ -107,26 +105,19 @@
                            Width="22" Height="11"
                            HorizontalAlignment="Left"
                            Opacity="0.9"/>
-
-                    <!-- Battery Tip -->
                     <Border Background="White"
                            Width="1.5" Height="5"
                            HorizontalAlignment="Right"
                            CornerRadius="0,1,1,0"
                            Opacity="0.5"/>
-
-                    <!-- Battery Fill -->
                     <Border Background="{Binding BatteryPercentage, Converter={StaticResource BatteryToBrushConverter}}"
                            Width="{Binding BatteryPercentage, Converter={StaticResource BatteryToWidthConverter}}"
                            Height="7"
                            HorizontalAlignment="Left"
                            Margin="2,0,0,0"
                            CornerRadius="1.5"/>
-
-                    <!-- Charging Indicator -->
                     <Path Data="M11.67,3.5L9.17,8.5H11L9.33,12.5L12.83,7.5H11L11.67,3.5Z"
-                          Fill="White"
-                          Stretch="Uniform"
+                          Fill="White" Stretch="Uniform"
                           Width="7" Height="7"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center"

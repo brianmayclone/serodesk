@@ -486,6 +486,33 @@ namespace SeroDesk.Views
             ExitEditMode();
         }
 
+        private void SuggestionApp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.Tag is AppIcon app)
+            {
+                app.Launch();
+            }
+        }
+
+        /// <summary>
+        /// Updates the suggestions bar with frequently used apps.
+        /// </summary>
+        private void UpdateSuggestionsBar()
+        {
+            if (_viewModel == null) return;
+
+            var suggestions = _viewModel.FrequentlyUsedApps;
+            if (suggestions.Count > 0)
+            {
+                SuggestionsPanel.ItemsSource = suggestions;
+                SuggestionsBar.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                SuggestionsBar.Visibility = Visibility.Collapsed;
+            }
+        }
+
         private void CancelGroupCreation_Click(object sender, RoutedEventArgs e)
         {
             GroupCreationOverlay.Visibility = Visibility.Collapsed;
@@ -550,139 +577,116 @@ namespace SeroDesk.Views
             }
         }
         
-        // Timer for edge-drag page navigation
+        // Edge-drag page navigation
         private System.Threading.Timer? _edgeDragTimer;
         private bool _isEdgeDragPending = false;
-        private const double EDGE_DRAG_ZONE = 60; // pixels from edge to trigger page change
+        private const double EDGE_DRAG_ZONE = 80; // wider zone for easier touch targeting
 
         private void OnIconDragMoved(object? sender, IconDragEventArgs e)
         {
             if (_draggedIcon == null) return;
 
-            // Update dragged icon position
             var newX = e.Position.X - _dragOffset.X;
             var newY = e.Position.Y - _dragOffset.Y;
-
             Canvas.SetLeft(_draggedIcon, newX);
             Canvas.SetTop(_draggedIcon, newY);
 
             var canvasWidth = IconCanvas.ActualWidth;
             if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
 
-            // Check if dragging near edges for page navigation
-            if (e.Position.X > canvasWidth - EDGE_DRAG_ZONE)
+            // Edge detection for page navigation
+            bool nearRightEdge = e.Position.X > canvasWidth - EDGE_DRAG_ZONE;
+            bool nearLeftEdge = e.Position.X < EDGE_DRAG_ZONE;
+
+            if (nearRightEdge && !_isEdgeDragPending)
             {
-                // Near right edge - navigate to next page (or create one)
-                if (!_isEdgeDragPending)
-                {
-                    _isEdgeDragPending = true;
-                    _edgeDragTimer?.Dispose();
-                    _edgeDragTimer = new System.Threading.Timer(
-                        callback: (state) =>
-                        {
-                            Application.Current.Dispatcher.Invoke(() =>
-                            {
-                                if (_draggedIcon != null && _viewModel != null)
-                                {
-                                    if (_viewModel.CurrentPage >= _viewModel.TotalPages - 1)
-                                    {
-                                        // Create a new page by adding items beyond current capacity
-                                        // The ViewModel will auto-create pages in CreatePages()
-                                        _viewModel.NextPage(); // This won't move past last page...
-                                        // Force page creation if we're at the end
-                                        if (_viewModel.CurrentPage == _viewModel.TotalPages - 1)
-                                        {
-                                            _viewModel.EnsureExtraPage();
-                                        }
-                                    }
-                                    else
-                                    {
-                                        _viewModel.NextPage();
-                                    }
-                                    CreateIconViews();
-                                    // Re-add dragged icon to canvas if it was removed
-                                    if (!IconCanvas.Children.Contains(_draggedIcon))
-                                    {
-                                        IconCanvas.Children.Add(_draggedIcon);
-                                    }
-                                    _draggedIcon.Visibility = Visibility.Visible;
-                                    Panel.SetZIndex(_draggedIcon, 1000);
-                                }
-                                _isEdgeDragPending = false;
-                            });
-                        },
-                        state: null,
-                        dueTime: 600,
-                        period: System.Threading.Timeout.Infinite
-                    );
-                }
+                StartEdgeDragTimer(isRightEdge: true);
             }
-            else if (e.Position.X < EDGE_DRAG_ZONE)
+            else if (nearLeftEdge && !_isEdgeDragPending && (_viewModel?.CurrentPage ?? 0) > 0)
             {
-                // Near left edge - navigate to previous page
-                if (!_isEdgeDragPending && (_viewModel?.CurrentPage ?? 0) > 0)
-                {
-                    _isEdgeDragPending = true;
-                    _edgeDragTimer?.Dispose();
-                    _edgeDragTimer = new System.Threading.Timer(
-                        callback: (state) =>
-                        {
-                            Application.Current.Dispatcher.Invoke(() =>
-                            {
-                                if (_draggedIcon != null && _viewModel != null)
-                                {
-                                    _viewModel.PreviousPage();
-                                    CreateIconViews();
-                                    if (!IconCanvas.Children.Contains(_draggedIcon))
-                                    {
-                                        IconCanvas.Children.Add(_draggedIcon);
-                                    }
-                                    _draggedIcon.Visibility = Visibility.Visible;
-                                    Panel.SetZIndex(_draggedIcon, 1000);
-                                }
-                                _isEdgeDragPending = false;
-                            });
-                        },
-                        state: null,
-                        dueTime: 600,
-                        period: System.Threading.Timeout.Infinite
-                    );
-                }
+                StartEdgeDragTimer(isRightEdge: false);
             }
-            else
+            else if (!nearRightEdge && !nearLeftEdge)
             {
-                // Not near edge - cancel any pending edge navigation
-                _isEdgeDragPending = false;
-                _edgeDragTimer?.Dispose();
-                _edgeDragTimer = null;
+                CancelEdgeDragTimer();
             }
 
-            // Calculate target grid position
+            // Calculate target grid position for rearrangement
             var targetGridPos = CalculateGridPosition(e.Position);
-
-            // Only trigger rearrangement if target position changed
             if (targetGridPos != _lastTargetGridPos)
             {
                 _lastTargetGridPos = targetGridPos;
-
-                // Cancel previous timer
                 _arrangementTimer?.Dispose();
-
-                // Start new timer for delayed rearrangement (400ms)
                 _arrangementTimer = new System.Threading.Timer(
-                    callback: (state) => {
-                        Application.Current.Dispatcher.Invoke(() => {
+                    callback: (state) =>
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
                             if (targetGridPos == _lastTargetGridPos && _draggedIcon != null)
-                            {
                                 AnimateIconsToMakeSpace(targetGridPos, _draggedIcon);
-                            }
                         });
                     },
-                    state: null,
-                    dueTime: 400,
-                    period: System.Threading.Timeout.Infinite
-                );
+                    state: null, dueTime: 400,
+                    period: System.Threading.Timeout.Infinite);
             }
+        }
+
+        private void StartEdgeDragTimer(bool isRightEdge)
+        {
+            _isEdgeDragPending = true;
+            _edgeDragTimer?.Dispose();
+            _edgeDragTimer = new System.Threading.Timer(
+                callback: (state) =>
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (_draggedIcon == null || _viewModel == null)
+                        {
+                            _isEdgeDragPending = false;
+                            return;
+                        }
+
+                        // Save reference to dragged icon before page switch
+                        var savedIcon = _draggedIcon;
+
+                        if (isRightEdge)
+                        {
+                            // On last page → create a new one
+                            if (_viewModel.CurrentPage >= _viewModel.TotalPages - 1)
+                                _viewModel.EnsureExtraPage();
+                            else
+                                _viewModel.NextPage();
+                        }
+                        else
+                        {
+                            _viewModel.PreviousPage();
+                        }
+
+                        // Rebuild icons for new page but keep dragged icon visible
+                        CreateIconViews();
+
+                        // Ensure dragged icon stays on canvas and visible
+                        if (!IconCanvas.Children.Contains(savedIcon))
+                            IconCanvas.Children.Add(savedIcon);
+                        savedIcon.Visibility = Visibility.Visible;
+                        Panel.SetZIndex(savedIcon, 1000);
+
+                        // Center the dragged icon on the new page
+                        var centerX = IconCanvas.ActualWidth / 2 - 45;
+                        Canvas.SetLeft(savedIcon, centerX);
+
+                        _isEdgeDragPending = false;
+                    });
+                },
+                state: null, dueTime: 500,
+                period: System.Threading.Timeout.Infinite);
+        }
+
+        private void CancelEdgeDragTimer()
+        {
+            _isEdgeDragPending = false;
+            _edgeDragTimer?.Dispose();
+            _edgeDragTimer = null;
         }
         
         private void OnIconDragCompleted(object? sender, IconDragEventArgs e)
@@ -1059,12 +1063,12 @@ namespace SeroDesk.Views
                 UpdatePagesLayout(animateDirection: currentPage != _previousPage, slideLeft: slideLeft);
                 _previousPage = currentPage;
             }
-            else if (e.PropertyName == nameof(LaunchpadViewModel.AllApplications) || 
+            else if (e.PropertyName == nameof(LaunchpadViewModel.AllApplications) ||
                      e.PropertyName == nameof(LaunchpadViewModel.AppGroups) ||
                      e.PropertyName == nameof(LaunchpadViewModel.DisplayItems))
             {
-                System.Diagnostics.Debug.WriteLine($"PropertyChanged triggered for {e.PropertyName}, creating icon views (DisplayItems count: {_viewModel?.DisplayItems.Count ?? 0})");
                 CreateIconViews();
+                UpdateSuggestionsBar();
             }
         }
         

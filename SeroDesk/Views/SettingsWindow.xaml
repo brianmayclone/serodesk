@@ -5,13 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Settings"
-        Height="700" Width="1000"
+        WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
         AllowsTransparency="True"
         WindowStyle="None"
         ResizeMode="NoResize"
-        ShowInTaskbar="False">
+        ShowInTaskbar="False"
+        Topmost="True">
     
     <Window.Resources>
         <!-- Windows 11 Colors -->
@@ -25,7 +26,7 @@
         
         <!-- Navigation Button Style -->
         <Style x:Key="NavButtonStyle" TargetType="RadioButton">
-            <Setter Property="Height" Value="48"/>
+            <Setter Property="Height" Value="56"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,0,16,0"/>
@@ -155,14 +156,10 @@
         </Style>
     </Window.Resources>
 
-    <!-- Main Window Border -->
+    <!-- Fullscreen Background -->
     <Border Background="{StaticResource Win11Background}"
-            CornerRadius="8"
-            BorderBrush="{StaticResource Win11CardBorder}"
-            BorderThickness="1">
-        <Border.Effect>
-            <DropShadowEffect Color="Black" BlurRadius="30" ShadowDepth="0" Opacity="0.3"/>
-        </Border.Effect>
+            CornerRadius="0"
+            BorderThickness="0">
         
         <Grid>
             <Grid.RowDefinitions>
@@ -199,7 +196,7 @@
             <!-- Content Area -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="260"/>
+                    <ColumnDefinition Width="320"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
