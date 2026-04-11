@@ -578,6 +578,309 @@
                             </Border>
                         </StackPanel>
 
+                        <!-- Launchpad Settings -->
+                        <StackPanel x:Name="LaunchpadSettings" Visibility="Collapsed">
+                            <TextBlock Text="Launchpad"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24"/>
+
+                            <!-- Show Suggestions -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Show suggested apps"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Display frequently used apps at the top of the Launchpad"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="ShowSuggestionsToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Auto-Categorize on Scan -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Auto-categorize new apps"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Automatically sort newly discovered apps into categories"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="AutoCategorizeToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Reset Layout -->
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Reset layout"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Remove all custom groups and re-scan installed applications"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <Button Content="Reset"
+                                            Grid.Column="1"
+                                            Padding="16,8"
+                                            Click="ResetLayout_Click"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Status Bar Settings -->
+                        <StackPanel x:Name="StatusBarSettings" Visibility="Collapsed">
+                            <TextBlock Text="Status Bar"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24"/>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Always show on desktop"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Keep the status bar visible when on the home screen"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="StatusBarAlwaysShowToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Auto-hide over applications"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Automatically hide the status bar when an application is in the foreground"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="StatusBarAutoHideToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Show battery percentage"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Display the battery percentage number next to the icon"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="ShowBatteryPercentToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Notifications Settings -->
+                        <StackPanel x:Name="NotificationSettings" Visibility="Collapsed">
+                            <TextBlock Text="Notifications"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24"/>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Show notifications"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Display system notifications in the Notification Center"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="ShowNotificationsToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Show badge counts on app icons"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Display unread notification counts on app icons in the Launchpad"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="ShowBadgesToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Notification sounds"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Play a sound when a new notification arrives"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="NotificationSoundsToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Startup Settings -->
+                        <StackPanel x:Name="StartupSettings" Visibility="Collapsed">
+                            <TextBlock Text="Startup"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24"/>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Kill Explorer on startup"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Terminate Windows Explorer to fully replace the shell. Explorer restarts when SeroDesk exits."
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="KillExplorerToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Hide Windows taskbar"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Continuously monitor and hide the Windows taskbar"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="HideTaskbarToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Block Windows key"
+                                                   FontSize="16" FontWeight="Medium"/>
+                                        <TextBlock Text="Intercept the Windows key to show SeroDesk instead of the Start menu"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Win11TextSecondary}"
+                                                   Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="BlockWindowsKeyToggle"
+                                              Grid.Column="1"
+                                              Style="{StaticResource Win11ToggleSwitch}"
+                                              IsChecked="True"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
                         <!-- About Section -->
                         <StackPanel x:Name="AboutSettings" Visibility="Collapsed">
                             <TextBlock Text="About"

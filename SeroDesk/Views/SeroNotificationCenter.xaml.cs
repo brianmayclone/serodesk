@@ -33,16 +33,19 @@ namespace SeroDesk.Views
         public void Show()
         {
             if (_isVisible) return;
-            
+
             _isVisible = true;
             NotificationPanel.Visibility = Visibility.Visible;
-            
+
+            // Update date/time display
+            UpdateDateTime();
+
             // Subscribe to global mouse events to detect clicks outside
             if (Application.Current.MainWindow != null)
             {
                 Application.Current.MainWindow.PreviewMouseDown += MainWindow_PreviewMouseDown;
             }
-            
+
             // Slide down animation
             var slideDown = new DoubleAnimation
             {
@@ -51,8 +54,15 @@ namespace SeroDesk.Views
                 Duration = TimeSpan.FromMilliseconds(400),
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
-            
+
             NotificationTransform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, slideDown);
+        }
+
+        private void UpdateDateTime()
+        {
+            var now = DateTime.Now;
+            DateText.Text = now.ToString("dddd, MMMM d");
+            TimeText.Text = now.ToString("HH:mm");
         }
         
         public void Hide()

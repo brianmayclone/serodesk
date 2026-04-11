@@ -121,8 +121,13 @@ namespace SeroDesk
             LocalizationManager.Instance.LoadLanguageSettings();
             
             // Initialize dock management system
-            // This loads dock configuration and prepares for dynamic updates
             DockManager.Instance.LoadDockSettings();
+
+            // Initialize input mode detection (keyboard/touch/mouse)
+            _ = InputModeService.Instance;
+            Logger.Info($"Input mode: {InputModeService.Instance.CurrentMode}, " +
+                       $"Touch: {InputModeService.Instance.IsTouchDevice}, " +
+                       $"Keyboard: {InputModeService.Instance.IsKeyboardAttached}");
             
             // Hide the Windows taskbar since we're replacing it with SeroDesk
             // This prevents the original taskbar from interfering with our dock

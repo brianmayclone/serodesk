@@ -179,19 +179,47 @@ namespace SeroDesk.Views
             GeneralSettings.Visibility = Visibility.Collapsed;
             AppearanceSettings.Visibility = Visibility.Collapsed;
             DockSettings.Visibility = Visibility.Collapsed;
+            LaunchpadSettings.Visibility = Visibility.Collapsed;
+            StatusBarSettings.Visibility = Visibility.Collapsed;
+            NotificationSettings.Visibility = Visibility.Collapsed;
+            StartupSettings.Visibility = Visibility.Collapsed;
             AboutSettings.Visibility = Visibility.Collapsed;
-            
+
             // Show selected panel
-            if (sender == NavGeneral)
-                GeneralSettings.Visibility = Visibility.Visible;
-            else if (sender == NavAppearance)
-                AppearanceSettings.Visibility = Visibility.Visible;
-            else if (sender == NavDock)
-                DockSettings.Visibility = Visibility.Visible;
-            else if (sender == NavAbout)
-                AboutSettings.Visibility = Visibility.Visible;
-            
-            // TODO: Add panels for other navigation items
+            if (sender == NavGeneral) GeneralSettings.Visibility = Visibility.Visible;
+            else if (sender == NavAppearance) AppearanceSettings.Visibility = Visibility.Visible;
+            else if (sender == NavDock) DockSettings.Visibility = Visibility.Visible;
+            else if (sender == NavLaunchpad) LaunchpadSettings.Visibility = Visibility.Visible;
+            else if (sender == NavStatusBar) StatusBarSettings.Visibility = Visibility.Visible;
+            else if (sender == NavNotifications) NotificationSettings.Visibility = Visibility.Visible;
+            else if (sender == NavStartup) StartupSettings.Visibility = Visibility.Visible;
+            else if (sender == NavAbout) AboutSettings.Visibility = Visibility.Visible;
+        }
+
+        private void ResetLayout_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will remove all custom groups and re-scan your installed applications. Continue?",
+                "Reset Layout",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    var mainWindow = Application.Current.MainWindow as MainWindow;
+                    // Access the Launchpad ViewModel via MainWindow's data context
+                    var viewModel = mainWindow?.DataContext as ViewModels.MainViewModel;
+                    viewModel?.Launchpad?.ResetLayout();
+                    MessageBox.Show("Layout has been reset. Apps will be re-organized.", "Done",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Failed to reset layout", ex);
+                }
+            }
         }
 
         private void SaveSettings()
