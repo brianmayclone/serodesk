@@ -70,12 +70,17 @@ namespace SeroDesk
             }
             
             // Setup comprehensive exception handling for production stability
-            // This ensures crashes are logged and the system can recover gracefully
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             DispatcherUnhandledException += OnDispatcherUnhandledException;
-            
+
+            // Check for crash recovery from previous session
+            CrashRecovery.CheckAndRecoverFromCrash();
+
             // Initialize all core services required for shell operation
             InitializeServices();
+
+            // Mark as running after successful initialization
+            CrashRecovery.SetRunning();
             
             base.OnStartup(e);
         }
@@ -341,10 +346,13 @@ namespace SeroDesk
             // Ensures user customizations are preserved for the next session
             SettingsManager.Instance.SaveSettings();
             
+            // Clear crash recovery flag on clean exit
+            CrashRecovery.SetStopped();
+
             // Release the single-instance mutex to allow future SeroDesk executions
             _mutex?.ReleaseMutex();
             _mutex?.Dispose();
-            
+
             base.OnExit(e);
         }
         

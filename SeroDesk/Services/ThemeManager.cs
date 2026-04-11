@@ -161,35 +161,38 @@ namespace SeroDesk.Services
         /// <summary>
         /// Applies the current theme to all application windows and resources.
         /// </summary>
+        /// <summary>
+        /// URI of the currently loaded theme dictionary, used to replace only the theme resource.
+        /// </summary>
+        private Uri? _currentThemeDictionaryUri;
+
         public void ApplyTheme()
         {
             try
             {
                 var isDark = IsDarkTheme;
-                
-                // Update application resources
-                Application.Current.Resources.MergedDictionaries.Clear();
-                
-                // Load base styles
-                var baseStyles = new ResourceDictionary { Source = new Uri("pack://application:,,,/Styles/SeroStyles.xaml") };
-                Application.Current.Resources.MergedDictionaries.Add(baseStyles);
-                
-                // Load theme-specific styles
-                var themeStyles = new ResourceDictionary
+                var newThemeUri = new Uri($"pack://application:,,,/Styles/{(isDark ? "DarkTheme" : "LightTheme")}.xaml");
+                var dictionaries = Application.Current.Resources.MergedDictionaries;
+
+                // Only replace the theme dictionary, NOT all resources.
+                // This preserves converters, base styles, animations, and touch styles.
+                if (_currentThemeDictionaryUri != null)
                 {
-                    Source = new Uri($"pack://application:,,,/Styles/{(isDark ? "DarkTheme" : "LightTheme")}.xaml")
-                };
-                Application.Current.Resources.MergedDictionaries.Add(themeStyles);
-                
-                // Load animations and effects
-                var animations = new ResourceDictionary { Source = new Uri("pack://application:,,,/Styles/Animations.xaml") };
-                Application.Current.Resources.MergedDictionaries.Add(animations);
-                
-                // Apply transparency and blur effects
+                    var existing = dictionaries.FirstOrDefault(d => d.Source == _currentThemeDictionaryUri);
+                    if (existing != null)
+                    {
+                        dictionaries.Remove(existing);
+                    }
+                }
+
+                var themeStyles = new ResourceDictionary { Source = newThemeUri };
+                dictionaries.Add(themeStyles);
+                _currentThemeDictionaryUri = newThemeUri;
+
+                // Apply effects
                 ApplyTransparencyEffects();
                 ApplyBlurEffects();
-                
-                // Notify theme change
+
                 OnPropertyChanged(nameof(IsDarkTheme));
                 ThemeChanged?.Invoke(isDark);
             }

@@ -242,20 +242,19 @@ namespace SeroDesk.Views
         {
             var canvasWidth = IconCanvas?.ActualWidth ?? 1600;
             var canvasHeight = IconCanvas?.ActualHeight ?? 600;
-            
-            // Ensure we have sane values BEFORE any calculations
+
             if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
             if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
-            
-            var iconWidth = 90.0;
-            var iconHeight = 120.0;
-            var columnsPerPage = 7; // Fixed grid layout
-            var rowsPerPage = 5;
-            
-            // Calculate spacing with validated dimensions
+
+            var iconWidth = Constants.UIConstants.IconCellWidth;
+            var iconHeight = Constants.UIConstants.IconCellHeight;
+
+            // Dynamic grid calculation based on screen size
+            var (columnsPerPage, rowsPerPage, _) = Constants.UIConstants.CalculateGrid(canvasWidth, canvasHeight);
+
             var horizontalSpacing = canvasWidth / columnsPerPage;
             var verticalSpacing = canvasHeight / rowsPerPage;
-            
+
             return (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight);
         }
         
@@ -797,20 +796,8 @@ namespace SeroDesk.Views
         
         private Point CalculateGridPosition(Point screenPosition)
         {
-            var canvasWidth = IconCanvas.ActualWidth;
-            var canvasHeight = IconCanvas.ActualHeight;
-            
-            // Ensure we have sane values BEFORE any calculations
-            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
-            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
-            
-            var columnsPerPage = 7; // Reduced because icons are larger
-            var rowsPerPage = 5; // Reduced because icons are larger
-            
-            var horizontalSpacing = canvasWidth / columnsPerPage;
-            var verticalSpacing = canvasHeight / rowsPerPage;
-            
-            // Calculate which page we're on (support for multiple pages)
+            var (canvasWidth, _, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, _, _) = GetGridDimensions();
+
             var currentPageOffset = _viewModel?.CurrentPage ?? 0;
             var adjustedX = screenPosition.X + (currentPageOffset * canvasWidth);
             
@@ -826,24 +813,8 @@ namespace SeroDesk.Views
         
         private void AnimateIconsToMakeSpace(Point targetGridPos, SeroIconView draggedIcon)
         {
-            System.Diagnostics.Debug.WriteLine($"AnimateIconsToMakeSpace: target=({targetGridPos.X},{targetGridPos.Y})");
-            
-            // Get same dimensions as used in CreateIconViews
-            var canvasWidth = IconCanvas.ActualWidth;
-            var canvasHeight = IconCanvas.ActualHeight;
-            
-            // Ensure we have sane values BEFORE any calculations
-            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
-            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
-            
-            var iconWidth = 90.0;
-            var iconHeight = 120.0;
-            var columnsPerPage = 7; // Reduced because icons are larger
-            var rowsPerPage = 5; // Reduced because icons are larger
+            var (_, _, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
             var iconsPerPage = columnsPerPage * rowsPerPage;
-            
-            var horizontalSpacing = canvasWidth / columnsPerPage;
-            var verticalSpacing = canvasHeight / rowsPerPage;
             
             // Calculate target index in global grid
             var targetIndex = (int)(targetGridPos.Y * columnsPerPage + targetGridPos.X);
@@ -891,23 +862,7 @@ namespace SeroDesk.Views
         
         private void FinalizeIconPositions(Point targetGridPos, SeroIconView draggedIcon)
         {
-            System.Diagnostics.Debug.WriteLine($"FinalizeIconPositions: target=({targetGridPos.X},{targetGridPos.Y})");
-            
-            // Get same dimensions as used in CreateIconViews
-            var canvasWidth = IconCanvas.ActualWidth;
-            var canvasHeight = IconCanvas.ActualHeight;
-            
-            // Ensure we have sane values BEFORE any calculations
-            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
-            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
-            
-            var iconWidth = 90.0;
-            var iconHeight = 120.0;
-            var columnsPerPage = 7; // Reduced because icons are larger
-            var rowsPerPage = 5; // Reduced because icons are larger
-            
-            var horizontalSpacing = canvasWidth / columnsPerPage;
-            var verticalSpacing = canvasHeight / rowsPerPage;
+            var (_, _, columnsPerPage, _, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
             
             var finalX = targetGridPos.X * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
             var finalY = targetGridPos.Y * verticalSpacing + (verticalSpacing - iconHeight) / 2;
@@ -1091,15 +1046,18 @@ namespace SeroDesk.Views
         private double _manipulationStartX = 0;
         private bool _isSwipeInProgress = false;
         
+        private int _previousPage = 0;
+
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine($"ViewModel_PropertyChanged: {e.PropertyName}");
-            
-            if (e.PropertyName == nameof(LaunchpadViewModel.TotalPages) || 
+            if (e.PropertyName == nameof(LaunchpadViewModel.TotalPages) ||
                 e.PropertyName == nameof(LaunchpadViewModel.CurrentPage))
             {
+                var currentPage = _viewModel?.CurrentPage ?? 0;
+                bool slideLeft = currentPage > _previousPage;
                 UpdatePageIndicators();
-                UpdatePagesLayout();
+                UpdatePagesLayout(animateDirection: currentPage != _previousPage, slideLeft: slideLeft);
+                _previousPage = currentPage;
             }
             else if (e.PropertyName == nameof(LaunchpadViewModel.AllApplications) || 
                      e.PropertyName == nameof(LaunchpadViewModel.AppGroups) ||
@@ -1330,12 +1288,39 @@ namespace SeroDesk.Views
             UpdatePageIndicators();
         }
         
-        private void UpdatePagesLayout()
+        private void UpdatePagesLayout(bool animateDirection = false, bool slideLeft = false)
         {
             if (_viewModel == null || IconCanvas == null) return;
-            
-            // Instead of using transforms, we'll recreate the icon views for the current page
+
+            // Animate page transition
+            var slideDirection = slideLeft ? -1 : 1;
+            var slideFrom = slideDirection * 80;
+
+            var slideAnim = new DoubleAnimation
+            {
+                From = slideFrom,
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            var fadeAnim = new DoubleAnimation
+            {
+                From = 0.5,
+                To = 1.0,
+                Duration = TimeSpan.FromMilliseconds(200)
+            };
+
+            var transform = new System.Windows.Media.TranslateTransform();
+            IconCanvas.RenderTransform = transform;
+
             CreateIconViews();
+
+            if (animateDirection)
+            {
+                transform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, slideAnim);
+                IconCanvas.BeginAnimation(OpacityProperty, fadeAnim);
+            }
         }
         
         // Event handlers are now directly in XAML templates

@@ -136,6 +136,8 @@
                         VerticalAlignment="Center"
                         Margin="0,0,16,0"
                         CaretBrush="White"
+                        AutomationProperties.Name="Search applications"
+                        AutomationProperties.HelpText="Type to search for installed applications"
                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                         TextChanged="SearchBox_TextChanged">
                     <TextBox.Resources>

@@ -101,25 +101,16 @@ namespace SeroDesk.Platform
     /// </remarks>
     public class WindowManager : IDisposable
     {
-        /// <summary>
-        /// Singleton instance of the WindowManager.
-        /// </summary>
         private static WindowManager? _instance;
-        
-        /// <summary>
-        /// Observable collection of all tracked windows for UI binding.
-        /// </summary>
         private readonly ObservableCollection<WindowInfo> _windows;
-        
-        /// <summary>
-        /// Timer that periodically refreshes the window list to maintain accuracy.
-        /// </summary>
         private readonly System.Timers.Timer _updateTimer;
-        
-        /// <summary>
-        /// Indicates whether this instance has been disposed.
-        /// </summary>
         private bool _disposed = false;
+
+        /// <summary>
+        /// Cache of extracted icons keyed by process ID to prevent GDI handle leaks.
+        /// Icons are only re-extracted when a new process appears.
+        /// </summary>
+        private readonly Dictionary<uint, System.Drawing.Icon?> _iconCache = new();
         
         /// <summary>
         /// Gets the singleton instance of the WindowManager.
@@ -244,9 +235,13 @@ namespace SeroDesk.Platform
         
         private System.Drawing.Icon? GetWindowIcon(IntPtr hWnd, uint processId)
         {
+            // Check cache first to avoid repeated GDI handle allocations
+            if (_iconCache.TryGetValue(processId, out var cachedIcon))
+                return cachedIcon;
+
+            System.Drawing.Icon? icon = null;
             try
             {
-                // Try to get the window icon
                 IntPtr hIcon = SendMessage(hWnd, WM_GETICON, ICON_BIG, IntPtr.Zero);
                 if (hIcon == IntPtr.Zero)
                     hIcon = SendMessage(hWnd, WM_GETICON, ICON_SMALL, IntPtr.Zero);
@@ -254,30 +249,33 @@ namespace SeroDesk.Platform
                     hIcon = GetClassLongPtr(hWnd, GCL_HICON);
                 if (hIcon == IntPtr.Zero)
                     hIcon = GetClassLongPtr(hWnd, GCL_HICONSM);
-                
+
                 if (hIcon != IntPtr.Zero)
                 {
-                    return System.Drawing.Icon.FromHandle(hIcon);
+                    // Clone the icon to own the handle (original may be temporary)
+                    using var tempIcon = System.Drawing.Icon.FromHandle(hIcon);
+                    icon = (System.Drawing.Icon)tempIcon.Clone();
                 }
-                
-                // If no icon found, try to get from process executable
-                var process = System.Diagnostics.Process.GetProcessById((int)processId);
-                if (process.MainModule != null)
+                else
                 {
-                    var fileName = process.MainModule.FileName;
-                    
-                    // Special handling for UWP apps
-                    if (IsUWPApp(process))
+                    var process = System.Diagnostics.Process.GetProcessById((int)processId);
+                    if (process.MainModule != null)
                     {
-                        return GetUWPAppIcon(process);
+                        if (IsUWPApp(process))
+                        {
+                            icon = GetUWPAppIcon(process);
+                        }
+                        else
+                        {
+                            icon = System.Drawing.Icon.ExtractAssociatedIcon(process.MainModule.FileName);
+                        }
                     }
-                    
-                    return System.Drawing.Icon.ExtractAssociatedIcon(fileName);
                 }
             }
             catch { }
-            
-            return null;
+
+            _iconCache[processId] = icon;
+            return icon;
         }
         
         private bool IsUWPApp(System.Diagnostics.Process process)
@@ -430,6 +428,9 @@ namespace SeroDesk.Platform
         
         private void UpdateWindowCollection(List<WindowInfo> currentWindows)
         {
+            // Track which process IDs are still alive for icon cache cleanup
+            var activeProcessIds = new HashSet<uint>();
+
             // Remove windows that no longer exist
             for (int i = _windows.Count - 1; i >= 0; i--)
             {
@@ -438,24 +439,31 @@ namespace SeroDesk.Platform
                     _windows.RemoveAt(i);
                 }
             }
-            
+
             // Add new windows or update existing ones
             foreach (var window in currentWindows)
             {
+                activeProcessIds.Add(window.ProcessId);
                 var existing = _windows.FirstOrDefault(w => w.Handle == window.Handle);
                 if (existing != null)
                 {
-                    // Update existing window
                     existing.Title = window.Title;
                     existing.IsMinimized = window.IsMinimized;
-                    if (window.Icon != null)
+                    if (window.Icon != null && existing.Icon == null)
                         existing.Icon = window.Icon;
                 }
                 else
                 {
-                    // Add new window
                     _windows.Add(window);
                 }
+            }
+
+            // Clean up icon cache for processes that are no longer running
+            var staleKeys = _iconCache.Keys.Where(k => !activeProcessIds.Contains(k)).ToList();
+            foreach (var key in staleKeys)
+            {
+                _iconCache[key]?.Dispose();
+                _iconCache.Remove(key);
             }
         }
         

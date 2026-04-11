@@ -46,12 +46,13 @@
                     <!-- Home Button (Show Desktop) -->
                     <Button Grid.Column="0"
                             x:Name="HomeButton"
-                            Width="40" Height="40"
-                            Margin="4,0"
+                            Width="44" Height="44"
+                            Margin="3,0"
                             Background="Transparent"
                             BorderThickness="0"
                             Click="HomeButton_Click"
                             ToolTip="Show Desktop"
+                            AutomationProperties.Name="Home - Show Desktop"
                             Style="{StaticResource DockIconStyle}">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
@@ -91,8 +92,8 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Width="40" Height="40"
-                                        Margin="4,0"
+                                <Button Width="44" Height="44"
+                                        Margin="3,0"
                                         Background="Transparent"
                                         BorderThickness="0"
                                         Style="{StaticResource DockIconStyle}"
@@ -100,8 +101,25 @@
                                         MouseEnter="DockIcon_MouseEnter"
                                         MouseLeave="DockIcon_MouseLeave"
                                         MouseRightButtonUp="DockIcon_RightClick"
-                                        Tag="{Binding}"
-                                        ToolTip="{Binding Title}">
+                                        Tag="{Binding}">
+                                    <!-- Custom Tooltip with app name preview -->
+                                    <Button.ToolTip>
+                                        <ToolTip Placement="Top" VerticalOffset="-8"
+                                                HasDropShadow="True">
+                                            <ToolTip.Template>
+                                                <ControlTemplate TargetType="ToolTip">
+                                                    <Border Background="#E6202020"
+                                                            CornerRadius="8"
+                                                            Padding="12,6">
+                                                        <TextBlock Text="{Binding Title}"
+                                                                  Foreground="White"
+                                                                  FontSize="12"
+                                                                  FontWeight="Medium"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </ToolTip.Template>
+                                        </ToolTip>
+                                    </Button.ToolTip>
                                     <Button.ContextMenu>
                                         <ContextMenu x:Name="DockIconContextMenu">
                                             <MenuItem Header="Open" Click="ContextMenu_Open"/>
@@ -115,19 +133,17 @@
                                     </Button.ContextMenu>
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
-                                            <Grid>
-                                                <!-- App Icon with rounded corners - smaller size -->
-                                                <Border CornerRadius="8" ClipToBounds="True">
+                                            <Grid RenderTransformOrigin="0.5,1.0">
+                                                <Grid.RenderTransform>
+                                                    <ScaleTransform x:Name="IconScale"
+                                                                  ScaleX="1" ScaleY="1"/>
+                                                </Grid.RenderTransform>
+                                                <!-- App Icon with rounded corners -->
+                                                <Border CornerRadius="10" ClipToBounds="True">
                                                     <Image x:Name="AppIcon"
                                                            Source="{Binding Icon, Converter={StaticResource IconToImageSourceConverter}}"
-                                                           Width="40" Height="40"
-                                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                                           RenderTransformOrigin="0.5,0.5">
-                                                        <Image.RenderTransform>
-                                                            <ScaleTransform x:Name="IconScale" 
-                                                                          ScaleX="1" ScaleY="1"/>
-                                                        </Image.RenderTransform>
-                                                    </Image>
+                                                           Width="44" Height="44"
+                                                           RenderOptions.BitmapScalingMode="HighQuality"/>
                                                 </Border>
                                                 
                                                 <!-- Running Indicator Dot -->
@@ -142,23 +158,23 @@
                                             </Grid>
                                             
                                             <ControlTemplate.Triggers>
-                                                <!-- Hover Animation -->
+                                                <!-- Hover Magnification (macOS-style, anchor at bottom) -->
                                                 <Trigger Property="IsMouseOver" Value="True">
                                                     <Trigger.EnterActions>
                                                         <BeginStoryboard>
                                                             <Storyboard>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale"
                                                                                Storyboard.TargetProperty="ScaleX"
-                                                                               To="1.1" Duration="0:0:0.12">
+                                                                               To="1.35" Duration="0:0:0.15">
                                                                     <DoubleAnimation.EasingFunction>
-                                                                        <CubicEase EasingMode="EaseOut"/>
+                                                                        <BackEase EasingMode="EaseOut" Amplitude="0.3"/>
                                                                     </DoubleAnimation.EasingFunction>
                                                                 </DoubleAnimation>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale"
                                                                                Storyboard.TargetProperty="ScaleY"
-                                                                               To="1.1" Duration="0:0:0.12">
+                                                                               To="1.35" Duration="0:0:0.15">
                                                                     <DoubleAnimation.EasingFunction>
-                                                                        <CubicEase EasingMode="EaseOut"/>
+                                                                        <BackEase EasingMode="EaseOut" Amplitude="0.3"/>
                                                                     </DoubleAnimation.EasingFunction>
                                                                 </DoubleAnimation>
                                                             </Storyboard>
@@ -169,14 +185,14 @@
                                                             <Storyboard>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale"
                                                                                Storyboard.TargetProperty="ScaleX"
-                                                                               To="1.0" Duration="0:0:0.12">
+                                                                               To="1.0" Duration="0:0:0.2">
                                                                     <DoubleAnimation.EasingFunction>
                                                                         <CubicEase EasingMode="EaseOut"/>
                                                                     </DoubleAnimation.EasingFunction>
                                                                 </DoubleAnimation>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale"
                                                                                Storyboard.TargetProperty="ScaleY"
-                                                                               To="1.0" Duration="0:0:0.12">
+                                                                               To="1.0" Duration="0:0:0.2">
                                                                     <DoubleAnimation.EasingFunction>
                                                                         <CubicEase EasingMode="EaseOut"/>
                                                                     </DoubleAnimation.EasingFunction>

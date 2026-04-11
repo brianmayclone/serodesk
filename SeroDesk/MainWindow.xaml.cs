@@ -4,6 +4,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using SeroDesk.Constants;
 using SeroDesk.Platform;
 using SeroDesk.Services;
 using SeroDesk.ViewModels;
@@ -167,6 +168,9 @@ namespace SeroDesk
             
             // Start animation
             FadeIn();
+
+            // Show onboarding on first run
+            OnboardingService.ShowIfNeeded();
         }
         
         private void SetupOverlayWindow()
@@ -285,14 +289,17 @@ namespace SeroDesk
                 ToggleDesktopVisibility();
             }
             
-            // Block Windows hotkeys to prevent system interference
+            // Handle Windows hotkeys
             if (Keyboard.Modifiers == ModifierKeys.Windows)
             {
                 switch (e.Key)
                 {
+                    case Key.Tab: // Win+Tab -> App Switcher
+                        AppSwitcher.Toggle();
+                        e.Handled = true;
+                        break;
                     case Key.R: // Win+R (Run dialog)
-                    case Key.L: // Win+L (Lock screen)  
-                    case Key.Tab: // Win+Tab (Task view)
+                    case Key.L: // Win+L (Lock screen)
                     case Key.X: // Win+X (Power user menu)
                         e.Handled = true;
                         break;
@@ -420,7 +427,7 @@ namespace SeroDesk
         
         private void ShowAllWindows()
         {
-            WindowManager.Instance.ShowWindowSwitcher();
+            AppSwitcher.Toggle();
         }
         
         private void MinimizeAllWindows()

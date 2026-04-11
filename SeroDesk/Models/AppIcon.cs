@@ -217,18 +217,33 @@ namespace SeroDesk.Models
         }
         
         public IconType Type { get; set; } = IconType.Application;
-        
+
         public DateTime LastAccessed { get; set; } = DateTime.Now;
-        
+
         public int LaunchCount { get; set; }
-        
+
         public bool IsPinned { get; set; }
-        
+
         public string? FolderId { get; set; }
-        
+
         public string? GroupId { get; set; }
-        
+
         public int GroupIndex { get; set; }
+
+        private int _badgeCount;
+        /// <summary>
+        /// Notification badge count shown on the app icon. 0 means no badge.
+        /// </summary>
+        public int BadgeCount
+        {
+            get => _badgeCount;
+            set { _badgeCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasBadge)); }
+        }
+
+        /// <summary>
+        /// Whether this icon should show a notification badge.
+        /// </summary>
+        public bool HasBadge => _badgeCount > 0;
         
         public void Launch()
         {

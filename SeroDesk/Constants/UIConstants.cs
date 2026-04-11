@@ -49,30 +49,48 @@ namespace SeroDesk.Constants
         #endregion
 
         #region LaunchPad Constants
-        
-        /// <summary>
-        /// The maximum number of application icons displayed per page in the LaunchPad.
-        /// </summary>
-        /// <remarks>
-        /// This value is optimized for a 7x5 grid layout on standard displays.
-        /// </remarks>
-        public const int ItemsPerPage = 35;
-        
+
         /// <summary>
         /// The size of application icons in pixels (width and height).
         /// </summary>
         public const int IconSize = 64;
-        
+
         /// <summary>
-        /// The spacing between icons in the LaunchPad grid in pixels.
+        /// The total width of an icon cell (icon + label + margins).
+        /// </summary>
+        public const double IconCellWidth = 90.0;
+
+        /// <summary>
+        /// The total height of an icon cell (icon + label + margins).
+        /// </summary>
+        public const double IconCellHeight = 120.0;
+
+        /// <summary>
+        /// Minimum spacing between icons in pixels.
         /// </summary>
         public const int IconSpacing = 16;
-        
+
         /// <summary>
-        /// The duration of page transition animations in milliseconds.
+        /// Duration of page transition animations in milliseconds.
         /// </summary>
         public const int PageTransitionDurationMs = 300;
-        
+
+        /// <summary>
+        /// Calculates the optimal grid dimensions based on available canvas size.
+        /// Returns (columns, rows, itemsPerPage).
+        /// </summary>
+        public static (int columns, int rows, int itemsPerPage) CalculateGrid(double canvasWidth, double canvasHeight)
+        {
+            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
+            if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
+
+            // Calculate how many icons fit based on cell size + minimum spacing
+            int columns = Math.Max(3, Math.Min(10, (int)(canvasWidth / (IconCellWidth + IconSpacing))));
+            int rows = Math.Max(2, Math.Min(7, (int)(canvasHeight / (IconCellHeight + IconSpacing / 2))));
+
+            return (columns, rows, columns * rows);
+        }
+
         #endregion
 
         #region Touch and Drag Constants

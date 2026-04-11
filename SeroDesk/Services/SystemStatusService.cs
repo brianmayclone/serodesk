@@ -259,20 +259,49 @@ namespace SeroDesk.Services
         {
             try
             {
-                // Simplified signal strength based on network availability
-                // In a real implementation, you would use native WiFi APIs
+                // Use netsh to get real WiFi signal quality
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "netsh",
+                        Arguments = "wlan show interfaces",
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                process.Start();
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(1000);
+
+                // Parse "Signal : 85%" from output
+                var signalLine = output.Split('\n')
+                    .FirstOrDefault(l => l.Contains("Signal") || l.Contains("signal"));
+                if (signalLine != null)
+                {
+                    var parts = signalLine.Split(':');
+                    if (parts.Length >= 2)
+                    {
+                        var percentStr = parts[1].Trim().Replace("%", "");
+                        if (int.TryParse(percentStr, out int percent))
+                        {
+                            // Convert percentage (0-100) to bars (0-4)
+                            if (percent >= 80) return 4;
+                            if (percent >= 60) return 3;
+                            if (percent >= 40) return 2;
+                            if (percent >= 20) return 1;
+                            return 0;
+                        }
+                    }
+                }
+
+                // Fallback: connected but couldn't read signal
                 var interfaces = NetworkInterface.GetAllNetworkInterfaces()
-                    .Where(ni => ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 && 
+                    .Where(ni => ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 &&
                                ni.OperationalStatus == OperationalStatus.Up)
                     .ToList();
-                
-                if (interfaces.Any())
-                {
-                    // Simulate signal strength based on connection quality
-                    return 4; // Good signal for demo
-                }
-                
-                return 2; // Weak signal
+                return interfaces.Any() ? 3 : 0;
             }
             catch
             {

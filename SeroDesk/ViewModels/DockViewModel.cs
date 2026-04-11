@@ -65,14 +65,18 @@ namespace SeroDesk.ViewModels
         
         private void UpdateRunningApplications()
         {
+            // Unsubscribe from old windows to prevent memory leaks
+            foreach (var oldWindow in RunningApplications)
+            {
+                oldWindow.PropertyChanged -= Window_PropertyChanged;
+            }
+
             RunningApplications.Clear();
-            
-            // Only show applications that should appear in dock
+
             foreach (var window in WindowManager.Instance.Windows)
             {
                 if (ShouldShowInDock(window))
                 {
-                    // Add IsRunning property for dock indicator
                     window.PropertyChanged += Window_PropertyChanged;
                     RunningApplications.Add(window);
                 }

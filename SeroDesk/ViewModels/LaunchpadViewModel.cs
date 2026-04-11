@@ -85,7 +85,7 @@ namespace SeroDesk.ViewModels
         /// <summary>
         /// Maximum number of items to display per page (7x5 grid = 35 items).
         /// </summary>
-        private int _itemsPerPage = 35;
+        private int _itemsPerPage = 35; // Default, updated dynamically via UpdateItemsPerPage()
         
         /// <summary>
         /// Collection of pages, each containing a collection of display items.
@@ -216,6 +216,27 @@ namespace SeroDesk.ViewModels
         public int TotalPages => _pages?.Count ?? 1;
         
         public bool HasMultiplePages => TotalPages > 1;
+
+        /// <summary>
+        /// Returns the top 8 most frequently launched apps for quick access suggestions.
+        /// </summary>
+        public List<AppIcon> FrequentlyUsedApps
+        {
+            get
+            {
+                var allApps = new List<AppIcon>(AllApplications);
+                // Also include apps inside groups
+                foreach (var group in AppGroups)
+                    allApps.AddRange(group.Apps);
+
+                return allApps
+                    .Where(a => a.LaunchCount > 0)
+                    .OrderByDescending(a => a.LaunchCount)
+                    .ThenByDescending(a => a.LastAccessed)
+                    .Take(8)
+                    .ToList();
+            }
+        }
         
         /// <summary>
         /// Initializes a new instance of the <see cref="LaunchpadViewModel"/> class.
@@ -305,7 +326,7 @@ namespace SeroDesk.ViewModels
                     }
                 }
                 
-                // Now try to load all installed applications
+                // Load all installed applications (Win32 + UWP)
                 try
                 {
                     var scannedApps = await ApplicationScanner.ScanInstalledApplicationsAsync();
@@ -317,7 +338,30 @@ namespace SeroDesk.ViewModels
                 }
                 catch (Exception scanEx)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Scanner error: {scanEx.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Win32 scanner error: {scanEx.Message}");
+                }
+
+                // Also scan for UWP/Store apps
+                try
+                {
+                    var uwpApps = await UwpAppScanner.ScanUwpAppsAsync();
+                    var existingPaths = new HashSet<string>(
+                        allApps.Where(a => a.ExecutablePath != null).Select(a => a.ExecutablePath!),
+                        StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var uwpApp in uwpApps)
+                    {
+                        // Deduplicate against already-found apps
+                        if (uwpApp.ExecutablePath != null && !existingPaths.Contains(uwpApp.ExecutablePath))
+                        {
+                            allApps.Add(uwpApp);
+                            existingPaths.Add(uwpApp.ExecutablePath);
+                        }
+                    }
+                }
+                catch (Exception uwpEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"UWP scanner error: {uwpEx.Message}");
                 }
                 
                 // Check if this is first run or we have a saved layout

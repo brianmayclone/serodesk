@@ -120,14 +120,21 @@ namespace SeroDesk.Views
         {
             IconImage.Source = appIcon.IconImage;
             IconText.Text = appIcon.Name;
-            AppCountBadge.Visibility = Visibility.Collapsed;
             IsGroup = false;
-            
-            // Extract dominant color from icon for background
+
+            // Show notification badge if app has one
+            if (appIcon.HasBadge)
+            {
+                AppCountBadge.Visibility = Visibility.Visible;
+                AppCountText.Text = appIcon.BadgeCount > 99 ? "99+" : appIcon.BadgeCount.ToString();
+            }
+            else
+            {
+                AppCountBadge.Visibility = Visibility.Collapsed;
+            }
+
             var dominantColor = ExtractDominantColorFromIcon(appIcon.IconImage);
             UpdateIconBackground(dominantColor);
-            
-            System.Diagnostics.Debug.WriteLine($"UpdateAppIcon: {appIcon.Name}, IconImage={appIcon.IconImage != null}, DominantColor={dominantColor}");
         }
         
         private void UpdateAppGroup(AppGroup appGroup)

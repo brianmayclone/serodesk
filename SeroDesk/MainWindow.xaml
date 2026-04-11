@@ -53,6 +53,10 @@
                 ManipulationDelta="GestureOverlay_ManipulationDelta"
                 ManipulationCompleted="GestureOverlay_ManipulationCompleted"/>
         
+        <!-- App Switcher Overlay -->
+        <views:AppSwitcher x:Name="AppSwitcher"
+                           Panel.ZIndex="400"/>
+
         <!-- iOS Notification Center (Left Side) -->
         <views:SeroNotificationCenter x:Name="NotificationCenter"
                                      Panel.ZIndex="300"
