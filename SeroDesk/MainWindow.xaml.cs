@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using SeroDesk.Platform;
 using SeroDesk.Services;
 using SeroDesk.ViewModels;
@@ -43,7 +45,13 @@ namespace SeroDesk
         /// events into semantic gestures (swipes, pinches) for iOS-like interaction.
         /// </summary>
         private GestureRecognizer _gestureRecognizer;
-        
+
+        /// <summary>
+        /// Timer to continuously enforce that MainWindow stays at the bottom of the Z-order.
+        /// Windows can re-order windows on focus changes, so we must re-assert our position.
+        /// </summary>
+        private DispatcherTimer? _zOrderTimer;
+
         /// <summary>
         /// Separate window for the iOS-style launchpad (SpringBoard) that displays
         /// all installed applications in a grid layout. Managed as a separate window
@@ -57,11 +65,6 @@ namespace SeroDesk
         /// above all other content while remaining accessible.
         /// </summary>
         private DockWindow? _dockWindow;
-        
-        /// <summary>
-        /// StatusBar window for iOS-style status bar with automatic window resizing
-        /// </summary>
-        private StatusBarWindow? _statusBarWindow;
         
         /// <summary>
         /// View model for the dock functionality, accessible to other components
@@ -168,17 +171,60 @@ namespace SeroDesk
         
         private void SetupOverlayWindow()
         {
-            // Get window handle
-            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            
+            var hwnd = new WindowInteropHelper(this).Handle;
+
             // Set window to desktop layer (behind all normal windows)
             WindowsIntegration.SetWindowAsDesktopChild(hwnd);
-            
+
             // Register as shell replacement
             WindowsIntegration.RegisterAsShell(hwnd);
-            
-            // This window should be interactive (NOT click-through)
-            // Only set it to bottom of Z-order, but keep it interactive
+
+            // Make the window a tool window so it doesn't appear in Alt+Tab
+            int exStyle = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE);
+            NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE,
+                exStyle | NativeMethods.WS_EX_TOOLWINDOW);
+
+            // Start Z-order enforcement timer - keeps MainWindow behind all other windows
+            _zOrderTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            _zOrderTimer.Tick += (s, e) => EnforceZOrder();
+            _zOrderTimer.Start();
+        }
+
+        /// <summary>
+        /// Ensures MainWindow stays at HWND_BOTTOM and DockWindow stays on top.
+        /// Called periodically to counteract Windows re-ordering windows on focus changes.
+        /// </summary>
+        private void EnforceZOrder()
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+
+                // Only push to bottom if no overlay (notification/control center) is showing
+                if (!NotificationCenter.IsVisible && !ControlCenter.IsVisible)
+                {
+                    NativeMethods.SetWindowPos(hwnd, new IntPtr(NativeMethods.HWND_BOTTOM),
+                        0, 0, 0, 0,
+                        NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+                }
+
+                // Ensure DockWindow stays on top
+                if (_dockWindow != null && _dockWindow.IsVisible)
+                {
+                    var dockHwnd = new WindowInteropHelper(_dockWindow).Handle;
+                    if (dockHwnd != IntPtr.Zero)
+                    {
+                        NativeMethods.SetWindowPos(dockHwnd, new IntPtr(NativeMethods.HWND_TOPMOST),
+                            0, 0, 0, 0,
+                            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+                    }
+                }
+            }
+            catch { }
         }
         
         private void InitializeDesktop()
@@ -325,17 +371,21 @@ namespace SeroDesk
         
         private void BringShellToForeground()
         {
-            // Bring this window and dock to foreground
-            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            WindowsIntegration.SetWindowAlwaysOnTop(hwnd);
+            var hwnd = new WindowInteropHelper(this).Handle;
+            // Temporarily bring to front for overlay interaction
+            NativeMethods.SetWindowPos(hwnd, new IntPtr(NativeMethods.HWND_TOPMOST),
+                0, 0, 0, 0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_SHOWWINDOW);
             this.Activate();
         }
-        
+
         private void SendShellToBack()
         {
-            // Send this window back to desktop layer
-            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            WindowsIntegration.SetWindowAsDesktopChild(hwnd);
+            var hwnd = new WindowInteropHelper(this).Handle;
+            // Return to bottom Z-order
+            NativeMethods.SetWindowPos(hwnd, new IntPtr(NativeMethods.HWND_BOTTOM),
+                0, 0, 0, 0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
         }
         
         private void OnPinchDetected(double scaleFactor)
@@ -435,17 +485,21 @@ namespace SeroDesk
         
         protected override void OnClosed(EventArgs e)
         {
+            // Clean up Z-order timer
+            _zOrderTimer?.Stop();
+            _zOrderTimer = null;
+
             // Clean up Windows key hook
             WindowsKeyHook.Shutdown();
-            
+
             // Clean up dock window
             _dockWindow?.Close();
             _dockWindow = null;
-            
+
             // Clean up launchpad window
             _launchpadWindow?.Close();
             _launchpadWindow = null;
-            
+
             base.OnClosed(e);
         }
     }

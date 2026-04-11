@@ -610,6 +610,45 @@ namespace SeroDesk.ViewModels
                 CurrentPage = pageIndex;
             }
         }
+
+        /// <summary>
+        /// Ensures an extra empty page exists at the end for drag-to-create-page scenarios.
+        /// Called when an icon is dragged to the right edge of the last page.
+        /// </summary>
+        public void EnsureExtraPage()
+        {
+            // Add an empty page if the last page is full
+            var lastPage = Pages.LastOrDefault();
+            if (lastPage == null || lastPage.Count >= _itemsPerPage)
+            {
+                Pages.Add(new ObservableCollection<object>());
+                OnPropertyChanged(nameof(TotalPages));
+                OnPropertyChanged(nameof(HasMultiplePages));
+                OnPropertyChanged(nameof(Pages));
+                CurrentPage = Pages.Count - 1;
+            }
+            else
+            {
+                CurrentPage = Pages.Count - 1;
+            }
+        }
+
+        /// <summary>
+        /// Removes any trailing empty pages (cleanup after drag operations).
+        /// </summary>
+        public void RemoveEmptyTrailingPages()
+        {
+            while (Pages.Count > 1 && Pages.Last().Count == 0)
+            {
+                Pages.RemoveAt(Pages.Count - 1);
+            }
+            if (CurrentPage >= Pages.Count)
+            {
+                CurrentPage = Pages.Count - 1;
+            }
+            OnPropertyChanged(nameof(TotalPages));
+            OnPropertyChanged(nameof(HasMultiplePages));
+        }
         
         public void MoveItem(int fromIndex, int toIndex)
         {

@@ -780,17 +780,7 @@ namespace SeroDesk.Views
             
             if (parent is SeroLaunchpad launchpad && !launchpad.IsEditMode)
             {
-                // Trigger edit mode on the launchpad
-                try
-                {
-                    var enterEditModeMethod = typeof(SeroLaunchpad).GetMethod("EnterEditMode", 
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    enterEditModeMethod?.Invoke(launchpad, null);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error triggering edit mode: {ex.Message}");
-                }
+                launchpad.EnterEditMode();
             }
             
             // Provide haptic feedback

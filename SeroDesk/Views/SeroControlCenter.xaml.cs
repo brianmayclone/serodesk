@@ -101,12 +101,6 @@ namespace SeroDesk.Views
             UpdateToggleState(BluetoothToggle, _viewModel?.IsBluetoothEnabled ?? false);
         }
         
-        private void MobileDataToggle_Click(object sender, RoutedEventArgs e)
-        {
-            _viewModel?.ToggleMobileData();
-            UpdateToggleState(MobileDataToggle, _viewModel?.IsMobileDataEnabled ?? false);
-        }
-        
         private void AirplaneModeToggle_Click(object sender, RoutedEventArgs e)
         {
             _viewModel?.ToggleAirplaneMode();
@@ -123,8 +117,26 @@ namespace SeroDesk.Views
         {
             _viewModel?.ToggleOrientationLock();
             var isLocked = _viewModel?.IsOrientationLocked ?? false;
-            UpdateToggleState(OrientationLockToggle, isLocked);
-            OrientationLockStatus.Text = isLocked ? "On" : "Off";
+
+            // Find OrientationLockStatus inside the ControlTemplate
+            var statusBlock = FindNameInTemplate<System.Windows.Controls.TextBlock>(OrientationLockToggle, "OrientationLockStatus");
+            if (statusBlock != null)
+            {
+                statusBlock.Text = isLocked ? "On" : "Off";
+            }
+        }
+
+        private T? FindNameInTemplate<T>(DependencyObject parent, string name) where T : FrameworkElement
+        {
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T element && element.Name == name)
+                    return element;
+                var result = FindNameInTemplate<T>(child, name);
+                if (result != null) return result;
+            }
+            return null;
         }
         
         private void BrightnessSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -151,10 +163,8 @@ namespace SeroDesk.Views
             
             UpdateToggleState(WiFiToggle, _viewModel.IsWiFiEnabled);
             UpdateToggleState(BluetoothToggle, _viewModel.IsBluetoothEnabled);
-            UpdateToggleState(MobileDataToggle, _viewModel.IsMobileDataEnabled);
             UpdateToggleState(AirplaneModeToggle, _viewModel.IsAirplaneModeEnabled);
             UpdateToggleState(HotspotToggle, _viewModel.IsHotspotEnabled);
-            UpdateToggleState(OrientationLockToggle, _viewModel.IsOrientationLocked);
             
             if (BrightnessSlider != null)
                 BrightnessSlider.Value = _viewModel.BrightnessLevel;

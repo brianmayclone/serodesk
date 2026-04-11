@@ -120,7 +120,7 @@ namespace SeroDesk.Views
             // Initialize timers
             _mouseTrackingTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(50) // Check mouse position every 50ms
+                Interval = TimeSpan.FromMilliseconds(150) // Check mouse position every 150ms
             };
             _mouseTrackingTimer.Tick += MouseTrackingTimer_Tick;
             

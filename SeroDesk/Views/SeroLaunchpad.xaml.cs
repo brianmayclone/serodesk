@@ -414,6 +414,16 @@ namespace SeroDesk.Views
             return null;
         }
         
+        private void GroupExpandedOverlay_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Only close if the click was directly on the overlay background, not on the content
+            if (e.OriginalSource == GroupExpandedOverlay)
+            {
+                CloseGroupExpanded_Click(sender, e);
+                e.Handled = true;
+            }
+        }
+
         private void CloseGroupExpanded_Click(object sender, RoutedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("CloseGroupExpanded_Click called - closing group overlay");
@@ -472,6 +482,11 @@ namespace SeroDesk.Views
             }
         }
         
+        private void DoneButton_Click(object sender, RoutedEventArgs e)
+        {
+            ExitEditMode();
+        }
+
         private void CancelGroupCreation_Click(object sender, RoutedEventArgs e)
         {
             GroupCreationOverlay.Visibility = Visibility.Collapsed;
@@ -536,35 +551,130 @@ namespace SeroDesk.Views
             }
         }
         
+        // Timer for edge-drag page navigation
+        private System.Threading.Timer? _edgeDragTimer;
+        private bool _isEdgeDragPending = false;
+        private const double EDGE_DRAG_ZONE = 60; // pixels from edge to trigger page change
+
         private void OnIconDragMoved(object? sender, IconDragEventArgs e)
         {
             if (_draggedIcon == null) return;
-            
+
             // Update dragged icon position
             var newX = e.Position.X - _dragOffset.X;
             var newY = e.Position.Y - _dragOffset.Y;
-            
+
             Canvas.SetLeft(_draggedIcon, newX);
             Canvas.SetTop(_draggedIcon, newY);
-            
+
+            var canvasWidth = IconCanvas.ActualWidth;
+            if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;
+
+            // Check if dragging near edges for page navigation
+            if (e.Position.X > canvasWidth - EDGE_DRAG_ZONE)
+            {
+                // Near right edge - navigate to next page (or create one)
+                if (!_isEdgeDragPending)
+                {
+                    _isEdgeDragPending = true;
+                    _edgeDragTimer?.Dispose();
+                    _edgeDragTimer = new System.Threading.Timer(
+                        callback: (state) =>
+                        {
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                if (_draggedIcon != null && _viewModel != null)
+                                {
+                                    if (_viewModel.CurrentPage >= _viewModel.TotalPages - 1)
+                                    {
+                                        // Create a new page by adding items beyond current capacity
+                                        // The ViewModel will auto-create pages in CreatePages()
+                                        _viewModel.NextPage(); // This won't move past last page...
+                                        // Force page creation if we're at the end
+                                        if (_viewModel.CurrentPage == _viewModel.TotalPages - 1)
+                                        {
+                                            _viewModel.EnsureExtraPage();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        _viewModel.NextPage();
+                                    }
+                                    CreateIconViews();
+                                    // Re-add dragged icon to canvas if it was removed
+                                    if (!IconCanvas.Children.Contains(_draggedIcon))
+                                    {
+                                        IconCanvas.Children.Add(_draggedIcon);
+                                    }
+                                    _draggedIcon.Visibility = Visibility.Visible;
+                                    Panel.SetZIndex(_draggedIcon, 1000);
+                                }
+                                _isEdgeDragPending = false;
+                            });
+                        },
+                        state: null,
+                        dueTime: 600,
+                        period: System.Threading.Timeout.Infinite
+                    );
+                }
+            }
+            else if (e.Position.X < EDGE_DRAG_ZONE)
+            {
+                // Near left edge - navigate to previous page
+                if (!_isEdgeDragPending && (_viewModel?.CurrentPage ?? 0) > 0)
+                {
+                    _isEdgeDragPending = true;
+                    _edgeDragTimer?.Dispose();
+                    _edgeDragTimer = new System.Threading.Timer(
+                        callback: (state) =>
+                        {
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                if (_draggedIcon != null && _viewModel != null)
+                                {
+                                    _viewModel.PreviousPage();
+                                    CreateIconViews();
+                                    if (!IconCanvas.Children.Contains(_draggedIcon))
+                                    {
+                                        IconCanvas.Children.Add(_draggedIcon);
+                                    }
+                                    _draggedIcon.Visibility = Visibility.Visible;
+                                    Panel.SetZIndex(_draggedIcon, 1000);
+                                }
+                                _isEdgeDragPending = false;
+                            });
+                        },
+                        state: null,
+                        dueTime: 600,
+                        period: System.Threading.Timeout.Infinite
+                    );
+                }
+            }
+            else
+            {
+                // Not near edge - cancel any pending edge navigation
+                _isEdgeDragPending = false;
+                _edgeDragTimer?.Dispose();
+                _edgeDragTimer = null;
+            }
+
             // Calculate target grid position
             var targetGridPos = CalculateGridPosition(e.Position);
-            
+
             // Only trigger rearrangement if target position changed
             if (targetGridPos != _lastTargetGridPos)
             {
                 _lastTargetGridPos = targetGridPos;
-                
+
                 // Cancel previous timer
                 _arrangementTimer?.Dispose();
-                
+
                 // Start new timer for delayed rearrangement (400ms)
                 _arrangementTimer = new System.Threading.Timer(
                     callback: (state) => {
                         Application.Current.Dispatcher.Invoke(() => {
                             if (targetGridPos == _lastTargetGridPos && _draggedIcon != null)
                             {
-                                System.Diagnostics.Debug.WriteLine($"Delayed rearrangement to ({targetGridPos.X},{targetGridPos.Y})");
                                 AnimateIconsToMakeSpace(targetGridPos, _draggedIcon);
                             }
                         });
@@ -579,40 +689,46 @@ namespace SeroDesk.Views
         private void OnIconDragCompleted(object? sender, IconDragEventArgs e)
         {
             if (_draggedIcon == null) return;
-            
-            // Cancel any pending arrangement timer
+
+            // Cancel any pending timers
             _arrangementTimer?.Dispose();
             _arrangementTimer = null;
+            _edgeDragTimer?.Dispose();
+            _edgeDragTimer = null;
+            _isEdgeDragPending = false;
             _lastTargetGridPos = new Point(-1, -1);
-            
-            // Check if dropped on another icon (for group creation)
+
+            // Check if dropped on another icon
             var targetIcon = GetIconAtPosition(e.Position, _draggedIcon);
-            System.Diagnostics.Debug.WriteLine($"Drop check: targetIcon={targetIcon?.AppIcon?.Name}, isGroup={targetIcon?.IsGroup}");
-            
-            if (targetIcon != null && !targetIcon.IsGroup && _draggedIcon.AppIcon != null && targetIcon.AppIcon != null)
+
+            if (targetIcon != null && targetIcon.IsGroup && _draggedIcon.AppIcon != null && targetIcon.AppGroup != null)
             {
-                System.Diagnostics.Debug.WriteLine($"Attempting to create group from {_draggedIcon.AppIcon.Name} + {targetIcon.AppIcon.Name}");
-                // Create group by combining two icons
+                // Dropped on an EXISTING GROUP -> add app to that group
+                System.Diagnostics.Debug.WriteLine($"Adding {_draggedIcon.AppIcon.Name} to existing group {targetIcon.AppGroup.Name}");
+                _viewModel?.AddAppToGroup(_draggedIcon.AppIcon, targetIcon.AppGroup);
+                CreateIconViews();
+            }
+            else if (targetIcon != null && !targetIcon.IsGroup && _draggedIcon.AppIcon != null && targetIcon.AppIcon != null)
+            {
+                // Dropped on another APP -> create new group from both
+                System.Diagnostics.Debug.WriteLine($"Creating group from {_draggedIcon.AppIcon.Name} + {targetIcon.AppIcon.Name}");
                 CreateGroupFromIcons(_draggedIcon.AppIcon, targetIcon.AppIcon);
-                System.Diagnostics.Debug.WriteLine($"Group creation completed");
             }
             else
             {
-                // Normal drop - finalize position
+                // Normal drop - finalize position and sync with ViewModel
                 var targetGridPos = CalculateGridPosition(e.Position);
-                System.Diagnostics.Debug.WriteLine($"Normal drop to grid position ({targetGridPos.X},{targetGridPos.Y})");
                 FinalizeIconPositions(targetGridPos, _draggedIcon);
+                SyncIconOrderToViewModel();
             }
-            
+
             // Stop wiggle animation
             StopWiggleAnimationForAll();
-            
+
             _draggedIcon = null;
-            
+
             // Save the new layout after drag
             _viewModel?.SaveCurrentLayout();
-            
-            System.Diagnostics.Debug.WriteLine("Drag completed");
         }
         
         private SeroIconView? GetIconAtPosition(Point position, SeroIconView? excludeIcon = null)
@@ -802,6 +918,42 @@ namespace SeroDesk.Views
             draggedIcon.GridPosition = targetGridPos;
         }
         
+        /// <summary>
+        /// After a drag-and-drop reorder, sync the visual icon order back into the ViewModel
+        /// so the layout can be correctly persisted.
+        /// </summary>
+        private void SyncIconOrderToViewModel()
+        {
+            if (_viewModel == null) return;
+
+            var (_, _, columnsPerPage, rowsPerPage, _, _, _, _) = GetGridDimensions();
+
+            // Collect all visible icons with their grid positions
+            var iconPositions = IconCanvas.Children.OfType<SeroIconView>()
+                .Where(iv => iv.Visibility == Visibility.Visible)
+                .Select(iv =>
+                {
+                    var gridPos = iv.GridPosition;
+                    int index = (int)(gridPos.Y * columnsPerPage + gridPos.X);
+                    return new { IconView = iv, Index = index };
+                })
+                .OrderBy(x => x.Index)
+                .ToList();
+
+            // Rebuild DisplayItems in the new order
+            _viewModel.DisplayItems.Clear();
+            foreach (var item in iconPositions)
+            {
+                if (item.IconView.IsGroup && item.IconView.AppGroup != null)
+                    _viewModel.DisplayItems.Add(item.IconView.AppGroup);
+                else if (item.IconView.AppIcon != null)
+                    _viewModel.DisplayItems.Add(item.IconView.AppIcon);
+            }
+
+            // Clean up empty trailing pages
+            _viewModel.RemoveEmptyTrailingPages();
+        }
+
         private void StartWiggleAnimationForAll(SeroIconView? except = null)
         {
             foreach (SeroIconView icon in IconCanvas.Children.OfType<SeroIconView>())
@@ -1015,26 +1167,42 @@ namespace SeroDesk.Views
         private void UpdatePageIndicators()
         {
             if (_viewModel == null) return;
-            
+
             PageIndicators.Children.Clear();
-            
+
+            if (_viewModel.TotalPages <= 1) return;
+
             for (int i = 0; i < _viewModel.TotalPages; i++)
             {
+                bool isCurrent = i == _viewModel.CurrentPage;
                 var dot = new System.Windows.Shapes.Ellipse
                 {
-                    Width = 8,
-                    Height = 8,
-                    Margin = new Thickness(4),
-                    Fill = i == _viewModel.CurrentPage ? 
-                        System.Windows.Media.Brushes.White : 
-                        new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x60, 0xFF, 0xFF, 0xFF)),
-                    Cursor = Cursors.Hand
+                    Width = isCurrent ? 10 : 7,
+                    Height = isCurrent ? 10 : 7,
+                    Margin = new Thickness(4, 0, 4, 0),
+                    Fill = isCurrent
+                        ? Brushes.White
+                        : new SolidColorBrush(Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF)),
+                    Cursor = Cursors.Hand,
+                    VerticalAlignment = VerticalAlignment.Center
                 };
-                
-                // Add click handler for direct page navigation
+
+                // Animate the dot
+                if (isCurrent)
+                {
+                    dot.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        Color = Colors.White, BlurRadius = 6, ShadowDepth = 0, Opacity = 0.6
+                    };
+                }
+
                 var pageIndex = i;
-                dot.MouseLeftButtonUp += (s, e) => _viewModel.GoToPage(pageIndex);
-                
+                dot.MouseLeftButtonUp += (s, e) =>
+                {
+                    _viewModel.GoToPage(pageIndex);
+                    e.Handled = true;
+                };
+
                 PageIndicators.Children.Add(dot);
             }
         }
@@ -1312,45 +1480,47 @@ namespace SeroDesk.Views
         public void EnterEditMode()
         {
             if (_isEditMode) return;
-            
+
             _isEditMode = true;
             System.Diagnostics.Debug.WriteLine("Entering edit mode");
-            
+
             // Update all icon views to show edit mode
             foreach (SeroIconView icon in IconCanvas.Children.OfType<SeroIconView>())
             {
                 icon.SetEditMode(true);
                 icon.StartWiggleAnimation();
             }
-            
-            // Update search bar visibility (hide during edit mode)
+
+            // Hide search bar, show Done button
             SearchBar.Visibility = Visibility.Collapsed;
-            
-            // Provide haptic feedback if available
-            try
-            {
-                System.Media.SystemSounds.Asterisk.Play();
-            }
-            catch { }
+            if (DoneButton != null)
+                DoneButton.Visibility = Visibility.Visible;
+
+            // Provide haptic feedback
+            try { System.Media.SystemSounds.Asterisk.Play(); } catch { }
         }
         
-        private void ExitEditMode()
+        public void ExitEditMode()
         {
             if (!_isEditMode) return;
-            
+
             _isEditMode = false;
             System.Diagnostics.Debug.WriteLine("Exiting edit mode");
-            
+
             // Update all icon views to exit edit mode
             foreach (SeroIconView icon in IconCanvas.Children.OfType<SeroIconView>())
             {
                 icon.SetEditMode(false);
                 icon.StopWiggleAnimation();
             }
-            
+
             // Show search bar again
             SearchBar.Visibility = Visibility.Visible;
-            
+
+            // Hide Done button
+            if (DoneButton != null)
+                DoneButton.Visibility = Visibility.Collapsed;
+
             // Save layout after edit mode
             _viewModel?.SaveCurrentLayout();
         }

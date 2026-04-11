@@ -19,127 +19,133 @@
                 <MenuItem Header="Properties" Click="ContextMenu_Properties"/>
             </ContextMenu>
         </Grid.ContextMenu>
-        <!-- Glassmorphism Background (without blur effect) -->
+
+        <!-- iOS-style Icon Background with dynamic color -->
         <Border x:Name="GlassBackground"
-                CornerRadius="16"
-                Width="70" Height="70"
+                CornerRadius="18"
+                Width="64" Height="64"
                 VerticalAlignment="Top"
-                HorizontalAlignment="Center">
+                HorizontalAlignment="Center"
+                Margin="0,4,0,0">
             <Border.Background>
-                <!-- Multi-layer glassmorphism effect -->
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                     <GradientStop Color="#30FFFFFF" Offset="0"/>
                     <GradientStop Color="#10FFFFFF" Offset="0.5"/>
                     <GradientStop Color="#20FFFFFF" Offset="1"/>
                 </LinearGradientBrush>
             </Border.Background>
-            <!-- Add subtle inner border for glass effect -->
             <Border.BorderBrush>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#60FFFFFF" Offset="0"/>
-                    <GradientStop Color="#20FFFFFF" Offset="1"/>
+                    <GradientStop Color="#40FFFFFF" Offset="0"/>
+                    <GradientStop Color="#15FFFFFF" Offset="1"/>
                 </LinearGradientBrush>
             </Border.BorderBrush>
-            <Border.BorderThickness>1</Border.BorderThickness>
+            <Border.BorderThickness>0.8</Border.BorderThickness>
         </Border>
-        
-        <!-- Icon Container (sharp, no blur) -->
-        <Border x:Name="IconBackground" 
-                CornerRadius="16"
-                Width="70" Height="70"
+
+        <!-- Icon Container -->
+        <Border x:Name="IconBackground"
+                CornerRadius="18"
+                Width="64" Height="64"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
-                Background="Transparent">
+                Margin="0,4,0,0"
+                Background="Transparent"
+                ClipToBounds="True">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="12" Opacity="0.4" ShadowDepth="2"/>
+                <DropShadowEffect BlurRadius="10" Opacity="0.35" ShadowDepth="2" Color="#000000"/>
             </Border.Effect>
-            
-            <!-- App Icon Image (sharp) -->
+
+            <!-- App Icon Image -->
             <Image x:Name="IconImage"
-                   Width="50" Height="50"
+                   Width="56" Height="56"
                    Stretch="Uniform"
+                   RenderOptions.BitmapScalingMode="HighQuality"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center">
                 <Image.Clip>
-                    <RectangleGeometry Rect="0,0,50,50" 
-                                     RadiusX="10" RadiusY="10"/>
+                    <RectangleGeometry Rect="0,0,56,56"
+                                     RadiusX="12" RadiusY="12"/>
                 </Image.Clip>
             </Image>
         </Border>
-        
+
         <!-- App Name -->
         <TextBlock x:Name="IconText"
                    Foreground="White"
-                   FontSize="12"
-                   FontWeight="Medium"
+                   FontSize="11"
+                   FontWeight="Normal"
                    TextAlignment="Center"
                    TextWrapping="Wrap"
                    VerticalAlignment="Top"
                    HorizontalAlignment="Center"
                    Margin="2,72,2,0"
                    MaxWidth="86"
-                   MaxHeight="40"
+                   MaxHeight="32"
+                   LineHeight="14"
                    TextTrimming="CharacterEllipsis">
             <TextBlock.Effect>
-                <DropShadowEffect Color="Black" BlurRadius="3" Opacity="0.8" ShadowDepth="1"/>
+                <DropShadowEffect Color="Black" BlurRadius="4" Opacity="0.9" ShadowDepth="1"/>
             </TextBlock.Effect>
         </TextBlock>
-        
-        <!-- Group App Count Badge (for groups) -->
+
+        <!-- Group App Count Badge -->
         <Border x:Name="AppCountBadge"
                 Background="#FF3B30"
-                CornerRadius="10"
-                Width="20" Height="20"
+                CornerRadius="9"
+                MinWidth="18" Height="18"
+                Padding="4,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Right"
-                Margin="0,4,4,0"
+                Margin="0,2,6,0"
                 Visibility="Collapsed">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="3" Opacity="0.3" ShadowDepth="1"/>
+            </Border.Effect>
             <TextBlock x:Name="AppCountText"
                        Foreground="White"
-                       FontSize="11"
+                       FontSize="10"
                        FontWeight="Bold"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"/>
         </Border>
-        
+
         <!-- Drag Visual Feedback -->
         <Border x:Name="DragPreview"
-                Background="#40007AFF"
-                CornerRadius="16"
-                Width="70" Height="70"
+                Background="#30007AFF"
+                CornerRadius="18"
+                Width="64" Height="64"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
+                Margin="0,4,0,0"
                 Visibility="Collapsed"/>
-        
-        <!-- Delete Button (iOS-style X) -->
+
+        <!-- Delete Button (iOS-style minus) -->
         <Button x:Name="DeleteButton"
-                Width="24" Height="24"
+                Width="22" Height="22"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
-                Margin="0,-5,0,0"
-                Background="#FF3B30"
-                BorderThickness="2"
-                BorderBrush="White"
+                Margin="4,0,0,0"
                 Visibility="Collapsed"
                 Click="DeleteButton_Click"
                 Cursor="Hand">
             <Button.Template>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="12">
-                        <TextBlock Text="✕"
+                    <Border Background="#E0FF3B30"
+                            CornerRadius="11"
+                            Width="22" Height="22">
+                        <TextBlock Text="&#x2212;"
                                   Foreground="White"
-                                  FontSize="12"
+                                  FontSize="14"
                                   FontWeight="Bold"
                                   HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"/>
+                                  VerticalAlignment="Center"
+                                  Margin="0,-2,0,0"/>
                     </Border>
                 </ControlTemplate>
             </Button.Template>
             <Button.Effect>
-                <DropShadowEffect Color="Black" BlurRadius="4" Opacity="0.5" ShadowDepth="1"/>
+                <DropShadowEffect Color="Black" BlurRadius="3" Opacity="0.4" ShadowDepth="1"/>
             </Button.Effect>
         </Button>
     </Grid>

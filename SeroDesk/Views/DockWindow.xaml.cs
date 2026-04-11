@@ -23,31 +23,48 @@ namespace SeroDesk.Views
         public DockWindow()
         {
             InitializeComponent();
-            
+
             Loaded += DockWindow_Loaded;
             SizeChanged += DockWindow_SizeChanged;
-            
+            Deactivated += DockWindow_Deactivated;
+
             // Initialize timers
             _mouseTrackingTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(50) // Check mouse position every 50ms
+                Interval = TimeSpan.FromMilliseconds(100) // Check mouse position every 100ms (was 50ms)
             };
             _mouseTrackingTimer.Tick += MouseTrackingTimer_Tick;
-            
+
             _hideTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(2) // Hide after 2 seconds of no mouse activity
+                Interval = TimeSpan.FromSeconds(2)
             };
             _hideTimer.Tick += HideTimer_Tick;
-            
+
             _desktopCheckTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(500) // Check desktop state every 500ms
+                Interval = TimeSpan.FromMilliseconds(1000) // Check desktop state every 1s (was 500ms)
             };
             _desktopCheckTimer.Tick += DesktopCheckTimer_Tick;
-            
+
             // Register with DockManager for settings application
             Services.DockManager.Instance.RegisterDockWindow(this);
+        }
+
+        /// <summary>
+        /// Re-asserts Topmost when the DockWindow loses focus so other apps can't cover it.
+        /// </summary>
+        private void DockWindow_Deactivated(object? sender, EventArgs e)
+        {
+            // Re-assert topmost after a brief delay to avoid fighting with the activating window
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (IsLoaded && IsVisible)
+                {
+                    Topmost = false;
+                    Topmost = true;
+                }
+            }), DispatcherPriority.Background);
         }
 
         private void DockWindow_SizeChanged(object sender, SizeChangedEventArgs e)

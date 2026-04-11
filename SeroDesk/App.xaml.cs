@@ -170,18 +170,12 @@ namespace SeroDesk
         {
             _taskbarHideTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(2) // Check every 2 seconds
+                Interval = TimeSpan.FromSeconds(5) // Check every 5 seconds (was 2s)
             };
             _taskbarHideTimer.Tick += (sender, e) =>
             {
-                // Force hide the taskbar if it's visible
                 if (!TaskbarManager.IsTaskbarHidden)
                 {
-                    TaskbarManager.ForceHideTaskbar();
-                }
-                else
-                {
-                    // Even if we think it's hidden, force hide it again to be sure
                     TaskbarManager.ForceHideTaskbar();
                 }
             };
