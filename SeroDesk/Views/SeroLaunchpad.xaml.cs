@@ -262,60 +262,34 @@ namespace SeroDesk.Views
         
         private void PlayLaunchAnimation(Button button)
         {
-            var launchStoryboard = new Storyboard();
-            
-            // Scale up then fade out
-            var scaleUp = new DoubleAnimation
+            // Ensure ScaleTransform exists on button
+            var scaleTransform = button.RenderTransform as ScaleTransform;
+            if (scaleTransform == null)
             {
-                To = 1.5,
-                Duration = TimeSpan.FromMilliseconds(300),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            
-            var fadeOut = new DoubleAnimation
-            {
-                To = 0,
-                Duration = TimeSpan.FromMilliseconds(300),
-                BeginTime = TimeSpan.FromMilliseconds(100)
-            };
-            
-            var restoreOpacity = new DoubleAnimation
-            {
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(100),
-                BeginTime = TimeSpan.FromMilliseconds(500)
-            };
-            
-            var restoreScale = new DoubleAnimation
-            {
-                To = 1.0,
-                Duration = TimeSpan.FromMilliseconds(100),
-                BeginTime = TimeSpan.FromMilliseconds(500)
-            };
-            
-            Storyboard.SetTarget(scaleUp, button);
-            Storyboard.SetTarget(fadeOut, button);
-            Storyboard.SetTarget(restoreOpacity, button);
-            Storyboard.SetTarget(restoreScale, button);
-            
-            Storyboard.SetTargetProperty(scaleUp, new PropertyPath("RenderTransform.ScaleX"));
-            Storyboard.SetTargetProperty(fadeOut, new PropertyPath("Opacity"));
-            Storyboard.SetTargetProperty(restoreOpacity, new PropertyPath("Opacity"));
-            Storyboard.SetTargetProperty(restoreScale, new PropertyPath("RenderTransform.ScaleX"));
-            
-            // Ensure button has transforms
-            if (button.RenderTransform == null)
-            {
-                button.RenderTransform = new System.Windows.Media.ScaleTransform();
+                scaleTransform = new ScaleTransform(1, 1);
+                button.RenderTransform = scaleTransform;
                 button.RenderTransformOrigin = new Point(0.5, 0.5);
             }
-            
-            launchStoryboard.Children.Add(scaleUp);
-            launchStoryboard.Children.Add(fadeOut);
-            launchStoryboard.Children.Add(restoreOpacity);
-            launchStoryboard.Children.Add(restoreScale);
-            
-            launchStoryboard.Begin();
+
+            // Scale up
+            var scaleUp = new DoubleAnimation
+            {
+                To = 1.4, Duration = TimeSpan.FromMilliseconds(200),
+                AutoReverse = true,
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            // Fade out and restore
+            var fadeOut = new DoubleAnimation
+            {
+                To = 0.3, Duration = TimeSpan.FromMilliseconds(200),
+                AutoReverse = true,
+                BeginTime = TimeSpan.FromMilliseconds(50)
+            };
+
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleUp);
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleUp);
+            button.BeginAnimation(OpacityProperty, fadeOut);
         }
         
         private void GroupIcon_Click(object sender, RoutedEventArgs e)
