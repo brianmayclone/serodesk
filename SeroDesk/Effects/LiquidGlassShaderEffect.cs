@@ -49,13 +49,13 @@ float4 main(float2 uv : TEXCOORD) : COLOR
     float lum = luminance(glass);
     glass = lerp(float3(lum, lum, lum), glass, 1.0 + saturationBoost * 0.12);
 
-    float fresnel = pow(edge, 2.2) * edgeIntensity;
-    float topGlow = pow(saturate(1.0 - uv.y), 3.5) * glowAmount;
-    float bottomCompression = pow(saturate(uv.y), 2.3) * distortion * 0.18;
+    float fresnel = pow(edge, 2.0) * edgeIntensity;
+    float topGlow = pow(saturate(1.0 - uv.y), 3.2) * glowAmount;
+    float bottomCompression = pow(saturate(uv.y), 2.1) * distortion * 0.08;
 
-    glass += fresnel * float3(0.17, 0.19, 0.22);
-    glass += topGlow * float3(0.24, 0.27, 0.30);
-    glass -= bottomCompression * float3(0.04, 0.04, 0.05);
+    glass += fresnel * float3(0.36, 0.37, 0.39);
+    glass += topGlow * float3(0.22, 0.23, 0.24);
+    glass -= bottomCompression * float3(0.01, 0.01, 0.015);
 
     return float4(saturate(glass), baseSample.a);
 }
@@ -139,27 +139,22 @@ float4 main(float2 uv : TEXCOORD) : COLOR
 
         private static PixelShader? CreatePixelShaderSafe()
         {
-            try
+            if (!TryCompileShader(ShaderSource, "main", "ps_3_0", out var shaderBytes, out var failureReason))
             {
-                return CreatePixelShader();
-            }
-            catch (Exception ex)
-            {
-                Logger.Warn($"LiquidGlass shader disabled: {ex.Message}");
+                Logger.Warn($"LiquidGlass shader disabled: {failureReason}");
                 return null;
             }
-        }
 
-        private static PixelShader CreatePixelShader()
-        {
-            var shaderBytes = CompileShader(ShaderSource, "main", "ps_3_0");
             var shader = new PixelShader();
             shader.SetStreamSource(new MemoryStream(shaderBytes));
             return shader;
         }
 
-        private static byte[] CompileShader(string source, string entryPoint, string profile)
+        private static bool TryCompileShader(string source, string entryPoint, string profile, out byte[] shaderBytes, out string failureReason)
         {
+            shaderBytes = Array.Empty<byte>();
+            failureReason = string.Empty;
+
             var sourceBytes = Encoding.ASCII.GetBytes(source);
             var compileResult = D3DCompile(
                 source,
@@ -179,11 +174,18 @@ float4 main(float2 uv : TEXCOORD) : COLOR
                 if (compileResult != 0 || shaderBlob == IntPtr.Zero)
                 {
                     var message = ReadBlob(errorBlob);
-                    throw new InvalidOperationException(
-                        $"LiquidGlass shader compilation failed (HRESULT 0x{compileResult:X8}). {message}".Trim());
+                    failureReason = $"compilation failed (HRESULT 0x{compileResult:X8}). {message}".Trim();
+                    return false;
                 }
 
-                return CopyBlobBytes(shaderBlob);
+                shaderBytes = CopyBlobBytes(shaderBlob);
+                if (shaderBytes.Length == 0)
+                {
+                    failureReason = "compiler returned an empty or unreadable shader blob.";
+                    return false;
+                }
+
+                return true;
             }
             finally
             {
@@ -205,16 +207,23 @@ float4 main(float2 uv : TEXCOORD) : COLOR
 
         private static byte[] CopyBlobBytes(IntPtr blob)
         {
-            var dataPointer = GetBlobBufferPointer(blob);
-            var size = checked((int)GetBlobBufferSize(blob).ToUInt64());
-            if (dataPointer == IntPtr.Zero || size <= 0)
+            try
+            {
+                var dataPointer = GetBlobBufferPointer(blob);
+                var size = checked((int)GetBlobBufferSize(blob).ToUInt64());
+                if (dataPointer == IntPtr.Zero || size <= 0)
+                {
+                    return Array.Empty<byte>();
+                }
+
+                var bytes = new byte[size];
+                Marshal.Copy(dataPointer, bytes, 0, size);
+                return bytes;
+            }
+            catch
             {
                 return Array.Empty<byte>();
             }
-
-            var bytes = new byte[size];
-            Marshal.Copy(dataPointer, bytes, 0, size);
-            return bytes;
         }
 
         private static IntPtr GetBlobBufferPointer(IntPtr blob)

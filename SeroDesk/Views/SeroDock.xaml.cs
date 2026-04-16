@@ -99,14 +99,15 @@ namespace SeroDesk.Views
                 clonedBrush.Stretch = Stretch.UniformToFill;
                 clonedBrush.AlignmentX = AlignmentX.Center;
                 clonedBrush.AlignmentY = AlignmentY.Bottom;
+                clonedBrush.Opacity = 0.92;
                 return clonedBrush;
             }
 
             return new LinearGradientBrush(
                 new GradientStopCollection
                 {
-                    new(Color.FromArgb(0xD0, 0x74, 0x84, 0x9B), 0),
-                    new(Color.FromArgb(0xC8, 0x36, 0x45, 0x59), 1)
+                    new(Color.FromArgb(0xE8, 0xFA, 0xFB, 0xFD), 0),
+                    new(Color.FromArgb(0xD8, 0xE7, 0xEC, 0xF4), 1)
                 },
                 new Point(0, 0),
                 new Point(1, 1));
