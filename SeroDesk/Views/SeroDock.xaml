@@ -4,149 +4,88 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
-             Height="96"
+             Height="88"
              d:DesignWidth="1920">
 
     <Grid>
         <!-- Dock Container -->
-        <Grid VerticalAlignment="Bottom" Margin="0,0,0,20">
+        <Grid VerticalAlignment="Bottom" Margin="0,0,0,10">
 
-            <!-- Dock Background - soft iOS-style translucent pill without shader dependency -->
+            <!-- Dock Background - quiet iOS-style shelf -->
             <Border x:Name="DockBackground"
-                    Height="70"
+                    Height="78"
                     VerticalAlignment="Bottom"
                     HorizontalAlignment="Center"
-                    CornerRadius="25"
-                    MinWidth="428"
-                    Padding="14,8"
+                    CornerRadius="30"
+                    MinWidth="330"
+                    MaxWidth="920"
+                    Padding="18,10,18,12"
                     ClipToBounds="True"
                     MouseMove="DockBackground_MouseMove"
                     MouseLeave="DockBackground_MouseLeave">
                 <Border.Effect>
-                    <DropShadowEffect Color="#20000000" BlurRadius="30" ShadowDepth="8" Opacity="0.12"/>
+                    <DropShadowEffect Color="#2A000000" BlurRadius="34" ShadowDepth="12" Opacity="0.18"/>
                 </Border.Effect>
 
                 <Grid>
                     <Rectangle x:Name="DockBackdropMaterial"
-                               RadiusX="25"
-                               RadiusY="25"
+                               RadiusX="30"
+                               RadiusY="30"
                                Stretch="Fill"
-                               Opacity="0.08"/>
+                               Opacity="0.2"/>
 
-                    <Border CornerRadius="25" BorderThickness="0.8">
+                    <Border CornerRadius="30" BorderThickness="0.8">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#ECFFFFFF" Offset="0"/>
-                                <GradientStop Color="#D4FFFFFF" Offset="0.22"/>
-                                <GradientStop Color="#BEF7F8FA" Offset="0.62"/>
-                                <GradientStop Color="#B6F0F2F5" Offset="1"/>
+                                <GradientStop Color="#D8FFFFFF" Offset="0"/>
+                                <GradientStop Color="#BEECEEF3" Offset="0.26"/>
+                                <GradientStop Color="#9ADCE2EA" Offset="0.7"/>
+                                <GradientStop Color="#94D3DBE5" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.Background>
                         <Border.BorderBrush>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                 <GradientStop Color="#F6FFFFFF" Offset="0"/>
-                                <GradientStop Color="#8CFFFFFF" Offset="0.34"/>
-                                <GradientStop Color="#24FFFFFF" Offset="1"/>
+                                <GradientStop Color="#84FFFFFF" Offset="0.32"/>
+                                <GradientStop Color="#18FFFFFF" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.BorderBrush>
                     </Border>
 
-                    <Border CornerRadius="25"
+                    <Border CornerRadius="30"
                             Margin="1"
-                            Background="#2CFFFFFF"/>
+                            Background="#34FFFFFF"/>
 
-                    <Border Height="20"
-                            CornerRadius="14"
+                    <Border Height="26"
+                            CornerRadius="18"
                             VerticalAlignment="Top"
-                            Margin="16,4,16,0"
-                            Opacity="0.6"
+                            Margin="18,5,18,0"
+                            Opacity="0.48"
                             IsHitTestVisible="False">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                 <GradientStop Color="#F8FFFFFF" Offset="0"/>
-                                <GradientStop Color="#56FFFFFF" Offset="0.52"/>
+                                <GradientStop Color="#54FFFFFF" Offset="0.5"/>
                                 <GradientStop Color="#00FFFFFF" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
+
+                    <!-- Hidden actions kept for keyboard / internal behaviors -->
+                    <Button x:Name="HomeButton"
+                            Visibility="Collapsed"
+                            Click="HomeButton_Click"/>
+                    <Button x:Name="SettingsButton"
+                            Visibility="Collapsed"
+                            Click="SettingsButton_Click"/>
 
                     <!-- Dock Items -->
-                    <Grid HorizontalAlignment="Center"
-                          VerticalAlignment="Center"
-                          Margin="8,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/> <!-- Home -->
-                        <ColumnDefinition Width="Auto"/> <!-- Separator -->
-                        <ColumnDefinition Width="Auto"/> <!-- Running Apps -->
-                        <ColumnDefinition Width="Auto"/> <!-- Separator -->
-                        <ColumnDefinition Width="Auto"/> <!-- Explorer -->
-                        <ColumnDefinition Width="Auto"/> <!-- Settings -->
-                        <ColumnDefinition Width="Auto"/> <!-- Trash -->
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Home Button -->
-                    <Button Grid.Column="0"
-                            x:Name="HomeButton"
-                            Width="50" Height="50"
-                            Margin="3,0,4,0"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Click="HomeButton_Click"
-                            ToolTip="Home"
-                            AutomationProperties.Name="Home"
-                            Cursor="Hand">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                    <Grid RenderTransformOrigin="0.5,1.0">
-                                        <Grid.RenderTransform>
-                                            <ScaleTransform x:Name="HomeScale" ScaleX="1" ScaleY="1"/>
-                                        </Grid.RenderTransform>
-                                        <Path Data="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"
-                                              Fill="#F7FFFFFF" Stretch="Uniform"
-                                              Width="19" Height="19"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-                                </Grid>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Trigger.EnterActions>
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="HomeScale" Storyboard.TargetProperty="ScaleX" To="1.05" Duration="0:0:0.14"/>
-                                                    <DoubleAnimation Storyboard.TargetName="HomeScale" Storyboard.TargetProperty="ScaleY" To="1.05" Duration="0:0:0.14"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </Trigger.EnterActions>
-                                        <Trigger.ExitActions>
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="HomeScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.18"/>
-                                                    <DoubleAnimation Storyboard.TargetName="HomeScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.18"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </Trigger.ExitActions>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-
-                    <!-- Separator -->
-                    <Border Grid.Column="1" Width="8" Height="1" Margin="2,0,4,0"
-                            VerticalAlignment="Center" Opacity="0">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#00FFFFFF" Offset="0"/>
-                                <GradientStop Color="#CCFFFFFF" Offset="0.5"/>
-                                <GradientStop Color="#00FFFFFF" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-
-                    <!-- Running Apps -->
                     <ItemsControl Grid.Column="2"
-                                x:Name="RunningAppsControl"
-                                ItemsSource="{Binding RunningApplications}">
+                                  x:Name="RunningAppsControl"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Margin="2,0"
+                                  ItemsSource="{Binding DockItems}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal"/>
@@ -154,8 +93,8 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Width="50" Height="50"
-                                        Margin="3,0"
+                                <Button Width="58" Height="58"
+                                        Margin="5,0"
                                         Background="Transparent"
                                         BorderThickness="0"
                                         Click="DockIcon_Click"
@@ -169,7 +108,7 @@
                                             <ToolTip.Template>
                                                 <ControlTemplate TargetType="ToolTip">
                                                     <Border Background="#E6202020" CornerRadius="8" Padding="12,6">
-                                                        <TextBlock Text="{Binding Title}" Foreground="White" FontSize="12"/>
+                                                        <TextBlock Text="{Binding DisplayName}" Foreground="White" FontSize="12"/>
                                                     </Border>
                                                 </ControlTemplate>
                                             </ToolTip.Template>
@@ -187,15 +126,35 @@
                                     </Button.ContextMenu>
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
-                                            <Grid RenderTransformOrigin="0.5,1.0">
+                                            <Grid Width="58"
+                                                  Height="58"
+                                                  RenderTransformOrigin="0.5,1.0">
                                                 <Grid.RenderTransform>
                                                     <ScaleTransform x:Name="IconScale" ScaleX="1" ScaleY="1"/>
                                                 </Grid.RenderTransform>
-                                                <Border CornerRadius="18" ClipToBounds="True">
-                                                    <Image Source="{Binding Icon, Converter={StaticResource IconToImageSourceConverter}}"
-                                                           Width="46" Height="46"
+
+                                                <Border Width="56"
+                                                        Height="56"
+                                                        CornerRadius="19"
+                                                        Background="#18FFFFFF"
+                                                        BorderBrush="#22FFFFFF"
+                                                        BorderThickness="0.6"
+                                                        VerticalAlignment="Top"
+                                                        HorizontalAlignment="Center"
+                                                        ClipToBounds="True">
+                                                    <Image Source="{Binding IconImage}"
+                                                           Width="50" Height="50"
                                                            RenderOptions.BitmapScalingMode="HighQuality"/>
                                                 </Border>
+
+                                                <Ellipse Width="5"
+                                                         Height="5"
+                                                         Fill="#F4FFFFFF"
+                                                         Opacity="0.92"
+                                                         VerticalAlignment="Bottom"
+                                                         HorizontalAlignment="Center"
+                                                         Margin="0,0,0,1"
+                                                         Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                             </Grid>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
@@ -203,12 +162,12 @@
                                                         <BeginStoryboard>
                                                             <Storyboard>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale" Storyboard.TargetProperty="ScaleX"
-                                                                               To="1.08" Duration="0:0:0.15">
-                                                                    <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.28"/></DoubleAnimation.EasingFunction>
+                                                                               To="1.1" Duration="0:0:0.16">
+                                                                    <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.24"/></DoubleAnimation.EasingFunction>
                                                                 </DoubleAnimation>
                                                                 <DoubleAnimation Storyboard.TargetName="IconScale" Storyboard.TargetProperty="ScaleY"
-                                                                               To="1.08" Duration="0:0:0.15">
-                                                                    <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.28"/></DoubleAnimation.EasingFunction>
+                                                                               To="1.1" Duration="0:0:0.16">
+                                                                    <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.24"/></DoubleAnimation.EasingFunction>
                                                                 </DoubleAnimation>
                                                             </Storyboard>
                                                         </BeginStoryboard>
@@ -235,137 +194,18 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-
-                    <!-- Separator -->
-                    <Border Grid.Column="3" Width="10" Height="1" Margin="4,0,2,0"
-                            VerticalAlignment="Center" Opacity="0">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#00FFFFFF" Offset="0"/>
-                                <GradientStop Color="#CCFFFFFF" Offset="0.5"/>
-                                <GradientStop Color="#00FFFFFF" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-
-                    <!-- Explorer -->
-                    <Button Grid.Column="4" Width="50" Height="50" Margin="3,0"
-                            Background="Transparent" BorderThickness="0"
-                            Click="FinderIcon_Click" ToolTip="Files" Cursor="Hand">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Grid RenderTransformOrigin="0.5,1.0">
-                                    <Grid.RenderTransform>
-                                        <ScaleTransform x:Name="ExScale" ScaleX="1" ScaleY="1"/>
-                                    </Grid.RenderTransform>
-                                    <Border CornerRadius="18" ClipToBounds="True">
-                                        <Image x:Name="ExplorerIcon" Width="46" Height="46"
-                                               RenderOptions.BitmapScalingMode="HighQuality"/>
-                                    </Border>
-                                </Grid>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Trigger.EnterActions>
-                                            <BeginStoryboard><Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="ExScale" Storyboard.TargetProperty="ScaleX" To="1.06" Duration="0:0:0.14"/>
-                                                <DoubleAnimation Storyboard.TargetName="ExScale" Storyboard.TargetProperty="ScaleY" To="1.06" Duration="0:0:0.14"/>
-                                            </Storyboard></BeginStoryboard>
-                                        </Trigger.EnterActions>
-                                        <Trigger.ExitActions>
-                                            <BeginStoryboard><Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="ExScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.15"/>
-                                                <DoubleAnimation Storyboard.TargetName="ExScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.15"/>
-                                            </Storyboard></BeginStoryboard>
-                                        </Trigger.ExitActions>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-
-                    <!-- Settings -->
-                    <Button Grid.Column="5" x:Name="SettingsButton"
-                            Width="50" Height="50" Margin="4,0,3,0"
-                            Background="Transparent" BorderThickness="0"
-                            Click="SettingsButton_Click" ToolTip="Settings" Cursor="Hand">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Grid RenderTransformOrigin="0.5,1.0">
-                                    <Grid.RenderTransform>
-                                        <ScaleTransform x:Name="SetScale" ScaleX="1" ScaleY="1"/>
-                                    </Grid.RenderTransform>
-                                    <Path Data="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"
-                                              Fill="#F7FFFFFF" Stretch="Uniform"
-                                              Width="19" Height="19"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Grid>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Trigger.EnterActions>
-                                            <BeginStoryboard><Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="SetScale" Storyboard.TargetProperty="ScaleX" To="1.05" Duration="0:0:0.14"/>
-                                                <DoubleAnimation Storyboard.TargetName="SetScale" Storyboard.TargetProperty="ScaleY" To="1.05" Duration="0:0:0.14"/>
-                                            </Storyboard></BeginStoryboard>
-                                        </Trigger.EnterActions>
-                                        <Trigger.ExitActions>
-                                            <BeginStoryboard><Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="SetScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.15"/>
-                                                <DoubleAnimation Storyboard.TargetName="SetScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.15"/>
-                                            </Storyboard></BeginStoryboard>
-                                        </Trigger.ExitActions>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-
-                    <!-- Recycle Bin -->
-                    <Button Grid.Column="6" Width="50" Height="50" Margin="3,0"
-                            Background="Transparent" BorderThickness="0"
-                            Click="TrashIcon_Click" ToolTip="Recycle Bin" Cursor="Hand">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Grid RenderTransformOrigin="0.5,1.0">
-                                    <Grid.RenderTransform>
-                                        <ScaleTransform x:Name="TrashScale" ScaleX="1" ScaleY="1"/>
-                                    </Grid.RenderTransform>
-                                    <Border CornerRadius="18" ClipToBounds="True">
-                                        <Image x:Name="RecycleBinIcon" Width="46" Height="46"
-                                               RenderOptions.BitmapScalingMode="HighQuality"/>
-                                    </Border>
-                                </Grid>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Trigger.EnterActions>
-                                            <BeginStoryboard><Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="TrashScale" Storyboard.TargetProperty="ScaleX" To="1.06" Duration="0:0:0.14"/>
-                                                <DoubleAnimation Storyboard.TargetName="TrashScale" Storyboard.TargetProperty="ScaleY" To="1.06" Duration="0:0:0.14"/>
-                                            </Storyboard></BeginStoryboard>
-                                        </Trigger.EnterActions>
-                                        <Trigger.ExitActions>
-                                            <BeginStoryboard><Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="TrashScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.15"/>
-                                                <DoubleAnimation Storyboard.TargetName="TrashScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.15"/>
-                                            </Storyboard></BeginStoryboard>
-                                        </Trigger.ExitActions>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-                    </Grid>
                 </Grid>
             </Border>
         </Grid>
 
         <!-- Hidden state indicator line -->
         <Border x:Name="DockIndicator"
-                Width="54" Height="6"
-                Background="#50FFFFFF"
-                CornerRadius="3"
+                Width="46" Height="5"
+                Background="#72FFFFFF"
+                CornerRadius="2.5"
                 VerticalAlignment="Bottom"
                 HorizontalAlignment="Center"
-                Margin="0,0,0,8"
+                Margin="0,0,0,6"
                 Visibility="Collapsed"/>
     </Grid>
 </UserControl>

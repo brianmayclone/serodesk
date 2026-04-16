@@ -5,6 +5,9 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
 using Newtonsoft.Json;
 using SeroDesk.Models;
 using SeroDesk.Platform;
@@ -13,15 +16,15 @@ namespace SeroDesk.ViewModels
 {
     public class DockViewModel : INotifyPropertyChanged
     {
-        private ObservableCollection<WindowInfo> _runningApplications;
+        private ObservableCollection<DockItem> _dockItems;
         private List<string> _pinnedApps;
         private string _pinnedAppsConfigPath;
         private bool _showRecentApps = true;
         
-        public ObservableCollection<WindowInfo> RunningApplications
+        public ObservableCollection<DockItem> DockItems
         {
-            get => _runningApplications;
-            set { _runningApplications = value; OnPropertyChanged(); }
+            get => _dockItems;
+            set { _dockItems = value; OnPropertyChanged(); }
         }
         
         public bool ShowRecentApps
@@ -32,13 +35,13 @@ namespace SeroDesk.ViewModels
                 _showRecentApps = value; 
                 OnPropertyChanged();
                 // Update the applications list when this changes
-                UpdateRunningApplications();
+                UpdateDockItems();
             }
         }
         
         public DockViewModel()
         {
-            _runningApplications = new ObservableCollection<WindowInfo>();
+            _dockItems = new ObservableCollection<DockItem>();
             _pinnedApps = new List<string>();
             
             _pinnedAppsConfigPath = Path.Combine(
@@ -55,41 +58,59 @@ namespace SeroDesk.ViewModels
             {
                 System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                 {
-                    UpdateRunningApplications();
+                    UpdateDockItems();
                 });
             };
             
             // Initial population
-            UpdateRunningApplications();
+            UpdateDockItems();
         }
         
-        private void UpdateRunningApplications()
+        private void UpdateDockItems()
         {
-            // Unsubscribe from old windows to prevent memory leaks
-            foreach (var oldWindow in RunningApplications)
-            {
-                oldWindow.PropertyChanged -= Window_PropertyChanged;
-            }
+            var runningWindows = WindowManager.Instance.Windows
+                .Where(ShouldShowAsRunningWindow)
+                .ToList();
 
-            RunningApplications.Clear();
-
-            foreach (var window in WindowManager.Instance.Windows)
+            var windowsByPath = new Dictionary<string, WindowInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var window in runningWindows)
             {
-                if (ShouldShowInDock(window))
+                var appPath = TryGetProcessPath(window.ProcessId);
+                if (!string.IsNullOrEmpty(appPath) && !windowsByPath.ContainsKey(appPath))
                 {
+                    window.PropertyChanged -= Window_PropertyChanged;
                     window.PropertyChanged += Window_PropertyChanged;
-                    RunningApplications.Add(window);
+                    windowsByPath[appPath] = window;
                 }
             }
+
+            DockItems.Clear();
+
+            foreach (var pinnedPath in _pinnedApps.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                DockItems.Add(CreateDockItem(pinnedPath, windowsByPath.TryGetValue(pinnedPath, out var runningWindow) ? runningWindow : null, isPinned: true));
+            }
+
+            foreach (var pair in windowsByPath)
+            {
+                if (_pinnedApps.Contains(pair.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                DockItems.Add(CreateDockItem(pair.Key, pair.Value, isPinned: false));
+            }
+
+            OnPropertyChanged(nameof(DockItems));
         }
         
         private void Window_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             // Update UI when window properties change
-            OnPropertyChanged(nameof(RunningApplications));
+            OnPropertyChanged(nameof(DockItems));
         }
         
-        private bool ShouldShowInDock(WindowInfo window)
+        private bool ShouldShowAsRunningWindow(WindowInfo window)
         {
             // Filter criteria for dock visibility
             if (string.IsNullOrEmpty(window.Title))
@@ -103,8 +124,7 @@ namespace SeroDesk.ViewModels
             bool isPinned = false;
             try
             {
-                var process = System.Diagnostics.Process.GetProcessById((int)window.ProcessId);
-                var appPath = process.MainModule?.FileName;
+                var appPath = TryGetProcessPath(window.ProcessId);
                 
                 if (!string.IsNullOrEmpty(appPath) && _pinnedApps.Contains(appPath))
                 {
@@ -131,20 +151,18 @@ namespace SeroDesk.ViewModels
         }
         
         // Methods for pinning/unpinning apps
-        public void RemoveFromDock(WindowInfo window)
+        public void RemoveFromDock(DockItem dockItem)
         {
             try
             {
-                var process = System.Diagnostics.Process.GetProcessById((int)window.ProcessId);
-                var appPath = process.MainModule?.FileName;
+                var appPath = dockItem.ExecutablePath;
                 
                 if (!string.IsNullOrEmpty(appPath))
                 {
                     _pinnedApps.Remove(appPath);
                     SavePinnedApps();
                     
-                    // Update the running applications list
-                    UpdateRunningApplications();
+                    UpdateDockItems();
                 }
             }
             catch (Exception ex)
@@ -163,8 +181,7 @@ namespace SeroDesk.ViewModels
                     _pinnedApps.Add(appPath);
                     SavePinnedApps();
                     
-                    // Update the running applications list
-                    UpdateRunningApplications();
+                    UpdateDockItems();
                     
                     System.Diagnostics.Debug.WriteLine($"Pinned {app.Name} to dock");
                 }
@@ -230,6 +247,71 @@ namespace SeroDesk.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error saving pinned apps: {ex.Message}");
+            }
+        }
+
+        private DockItem CreateDockItem(string executablePath, WindowInfo? runningWindow, bool isPinned)
+        {
+            return new DockItem
+            {
+                DisplayName = GetDisplayName(executablePath, runningWindow),
+                ExecutablePath = executablePath,
+                IconImage = GetIconImage(executablePath, runningWindow),
+                IsPinned = isPinned,
+                WindowInfo = runningWindow
+            };
+        }
+
+        private string GetDisplayName(string executablePath, WindowInfo? runningWindow)
+        {
+            if (!string.IsNullOrWhiteSpace(runningWindow?.Title))
+            {
+                return runningWindow.Title;
+            }
+
+            try
+            {
+                if (File.Exists(executablePath))
+                {
+                    var versionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(executablePath);
+                    if (!string.IsNullOrWhiteSpace(versionInfo.ProductName))
+                    {
+                        return versionInfo.ProductName;
+                    }
+                }
+            }
+            catch { }
+
+            return Path.GetFileNameWithoutExtension(executablePath);
+        }
+
+        private ImageSource? GetIconImage(string executablePath, WindowInfo? runningWindow)
+        {
+            try
+            {
+                if (runningWindow?.Icon != null)
+                {
+                    return Imaging.CreateBitmapSourceFromHIcon(
+                        runningWindow.Icon.Handle,
+                        Int32Rect.Empty,
+                        System.Windows.Media.Imaging.BitmapSizeOptions.FromWidthAndHeight(64, 64));
+                }
+            }
+            catch { }
+
+            return IconExtractor.GetIconForFile(executablePath, true);
+        }
+
+        private string? TryGetProcessPath(uint processId)
+        {
+            try
+            {
+                var process = System.Diagnostics.Process.GetProcessById((int)processId);
+                return process.MainModule?.FileName;
+            }
+            catch
+            {
+                return null;
             }
         }
     }

@@ -79,13 +79,21 @@ namespace SeroDesk.Views
             {
                 if (isTransparent)
                 {
-                    // Completely transparent for desktop/launchboard
-                    StatusBarBackground.Background = new SolidColorBrush(Color.FromArgb(0x00, 0x00, 0x00, 0x00));
+                    // Keep a subtle full-width strip so the status area reads like SpringBoard.
+                    StatusBarBackground.Background = new LinearGradientBrush(
+                        Color.FromArgb(0x56, 0x3E, 0x37, 0x2E),
+                        Color.FromArgb(0x18, 0x3E, 0x37, 0x2E),
+                        new Point(0, 0),
+                        new Point(0, 1));
                 }
                 else
                 {
-                    // Semi-opaque dark background for overlay over applications
-                    StatusBarBackground.Background = new SolidColorBrush(Color.FromArgb(0xC0, 0x00, 0x00, 0x00));
+                    // Stronger overlay when shown above foreground apps.
+                    StatusBarBackground.Background = new LinearGradientBrush(
+                        Color.FromArgb(0xD8, 0x10, 0x12, 0x16),
+                        Color.FromArgb(0xB6, 0x10, 0x12, 0x16),
+                        new Point(0, 0),
+                        new Point(0, 1));
                 }
             }
         }

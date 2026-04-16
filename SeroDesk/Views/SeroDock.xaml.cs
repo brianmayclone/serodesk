@@ -8,15 +8,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using SeroDesk.Platform;
+using SeroDesk.Models;
 using SeroDesk.ViewModels;
 
 namespace SeroDesk.Views
 {
     public partial class SeroDock : UserControl
     {
-        private const double DockMagnificationRadius = 138;
-        private const double DockIconPeakScale = 1.16;
-        private const double DockUtilityPeakScale = 1.14;
+        private const double DockMagnificationRadius = 144;
+        private const double DockIconPeakScale = 1.14;
+        private const double DockUtilityPeakScale = 1.1;
 
         private DockViewModel? _viewModel;
         private List<IntPtr> _minimizedWindows = new List<IntPtr>();
@@ -35,7 +36,6 @@ namespace SeroDesk.Views
             {
                 _viewModel = DataContext as DockViewModel;
                 ApplyBackdropMaterial();
-                LoadSystemIcons();
             };
         }
         
@@ -50,38 +50,11 @@ namespace SeroDesk.Views
             this.Dispatcher.BeginInvoke(new Action(() =>
             {
                 ApplyBackdropMaterial();
-                LoadSystemIcons();
             }), System.Windows.Threading.DispatcherPriority.Loaded);
             
             AnimateIn();
         }
         
-        private void LoadSystemIcons()
-        {
-            try
-            {
-                // Icons are inside ControlTemplates, so FindName won't work.
-                // We must walk the visual tree to find Image elements by x:Name.
-                LoadSystemIconDelayed("ExplorerIcon", () =>
-                {
-                    var icon = IconExtractor.GetSystemIcon(Platform.SystemIconType.Computer)
-                            ?? IconExtractor.GetIconForFile(@"C:\Windows\explorer.exe", true);
-                    return icon;
-                });
-
-                LoadSystemIconDelayed("RecycleBinIcon", () =>
-                {
-                    var icon = IconExtractor.GetSystemIcon(Platform.SystemIconType.RecycleBin)
-                            ?? IconExtractor.GetIconForFile(@"C:\Windows\System32\shell32.dll", true);
-                    return icon;
-                });
-            }
-            catch (Exception ex)
-            {
-                Services.Logger.Error("LoadSystemIcons failed", ex);
-            }
-        }
-
         private void ApplyBackdropMaterial()
         {
             try
@@ -103,7 +76,7 @@ namespace SeroDesk.Views
                 clonedBrush.Stretch = Stretch.UniformToFill;
                 clonedBrush.AlignmentX = AlignmentX.Center;
                 clonedBrush.AlignmentY = AlignmentY.Bottom;
-                clonedBrush.Opacity = 0.58;
+                clonedBrush.Opacity = 0.72;
                 return clonedBrush;
             }
 
@@ -117,48 +90,6 @@ namespace SeroDesk.Views
                 new Point(1, 1));
         }
 
-        private void LoadSystemIconDelayed(string imageName, Func<System.Windows.Media.ImageSource?> iconLoader)
-        {
-            // Delay to ensure ControlTemplates have been applied
-            this.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                try
-                {
-                    var image = FindVisualChildByName<System.Windows.Controls.Image>(this, imageName);
-                    if (image != null)
-                    {
-                        var iconSource = iconLoader();
-                        if (iconSource != null)
-                        {
-                            image.Source = iconSource;
-                            Services.Logger.Debug($"Loaded system icon: {imageName}");
-                        }
-                    }
-                    else
-                    {
-                        Services.Logger.Warn($"Image '{imageName}' not found in visual tree");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Services.Logger.Error($"Failed to load {imageName}", ex);
-                }
-            }), System.Windows.Threading.DispatcherPriority.Loaded);
-        }
-
-        private static T? FindVisualChildByName<T>(DependencyObject parent, string name) where T : FrameworkElement
-        {
-            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
-                if (child is T element && element.Name == name)
-                    return element;
-                var result = FindVisualChildByName<T>(child, name);
-                if (result != null) return result;
-            }
-            return null;
-        }
-        
         private void AnimateIn()
         {
             var slideUp = new DoubleAnimation
@@ -186,29 +117,41 @@ namespace SeroDesk.Views
         
         private void DockIcon_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag is WindowInfo window)
+            if (sender is Button button && button.Tag is DockItem dockItem)
             {
                 try
                 {
-                    if (window.IsMinimized)
+                    if (dockItem.WindowInfo?.Handle != IntPtr.Zero)
                     {
-                        // Restore and bring to foreground
-                        NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_RESTORE);
-                        NativeMethods.SetForegroundWindow(window.Handle);
-                    }
-                    else
-                    {
-                        var foregroundWindow = NativeMethods.GetForegroundWindow();
-                        if (foregroundWindow == window.Handle)
+                        var window = dockItem.WindowInfo;
+                        if (window!.IsMinimized)
                         {
-                            // Minimize if already focused
-                            NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_MINIMIZE);
+                            NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_RESTORE);
+                            NativeMethods.SetForegroundWindow(window.Handle);
                         }
                         else
                         {
-                            // Bring to foreground if not focused
-                            NativeMethods.SetForegroundWindow(window.Handle);
-                            NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_RESTORE);
+                            var foregroundWindow = NativeMethods.GetForegroundWindow();
+                            if (foregroundWindow == window.Handle)
+                            {
+                                NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_MINIMIZE);
+                            }
+                            else
+                            {
+                                NativeMethods.SetForegroundWindow(window.Handle);
+                                NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_RESTORE);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrWhiteSpace(dockItem.ExecutablePath))
+                        {
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = dockItem.ExecutablePath,
+                                UseShellExecute = true
+                            });
                         }
                     }
                 }
@@ -251,29 +194,33 @@ namespace SeroDesk.Views
         
         private void DockIcon_RightClick(object sender, MouseButtonEventArgs e)
         {
-            if (sender is Button button && button.Tag is WindowInfo window)
+            if (sender is Button button && button.Tag is DockItem dockItem)
             {
-                // Store the current window info for context menu actions
-                button.ContextMenu.Tag = window;
+                if (button.ContextMenu == null)
+                {
+                    return;
+                }
+
+                button.ContextMenu.Tag = dockItem;
                 
                 // Update context menu items based on window state
-                UpdateContextMenuItems(button.ContextMenu, window);
+                UpdateContextMenuItems(button.ContextMenu, dockItem);
                 
                 e.Handled = true;
             }
         }
         
-        private void UpdateContextMenuItems(ContextMenu contextMenu, WindowInfo window)
+        private void UpdateContextMenuItems(ContextMenu contextMenu, DockItem dockItem)
         {
             foreach (MenuItem item in contextMenu.Items.OfType<MenuItem>())
             {
                 switch (item.Header.ToString())
                 {
                     case "Close Window":
-                        item.IsEnabled = window.IsRunning;
+                        item.IsEnabled = dockItem.IsRunning;
                         break;
                     case "Open":
-                        item.IsEnabled = !window.IsRunning || window.IsMinimized;
+                        item.IsEnabled = !dockItem.IsRunning || dockItem.IsMinimized;
                         break;
                 }
             }
@@ -569,16 +516,24 @@ namespace SeroDesk.Views
         {
             if (sender is MenuItem menuItem && 
                 menuItem.Parent is ContextMenu contextMenu && 
-                contextMenu.Tag is WindowInfo window)
+                contextMenu.Tag is DockItem dockItem)
             {
                 try
                 {
-                    if (window.IsMinimized)
+                    var windowInfo = dockItem.WindowInfo;
+                    if (windowInfo is not null && windowInfo.Handle != IntPtr.Zero)
                     {
-                        NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_RESTORE);
+                        NativeMethods.ShowWindow(windowInfo.Handle, NativeMethods.SW_RESTORE);
+                        NativeMethods.SetForegroundWindow(windowInfo.Handle);
                     }
-                    NativeMethods.SetForegroundWindow(window.Handle);
-                    NativeMethods.ShowWindow(window.Handle, NativeMethods.SW_RESTORE);
+                    else if (!string.IsNullOrWhiteSpace(dockItem.ExecutablePath))
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = dockItem.ExecutablePath,
+                            UseShellExecute = true
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -591,13 +546,18 @@ namespace SeroDesk.Views
         {
             if (sender is MenuItem menuItem && 
                 menuItem.Parent is ContextMenu contextMenu && 
-                contextMenu.Tag is WindowInfo window)
+                contextMenu.Tag is DockItem dockItem)
             {
                 try
                 {
+                    if (dockItem.WindowInfo == null)
+                    {
+                        return;
+                    }
+
                     // Send close message to window
                     const int WM_CLOSE = 0x0010;
-                    NativeMethods.SendMessage(window.Handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    NativeMethods.SendMessage(dockItem.WindowInfo.Handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                 }
                 catch (Exception ex)
                 {
@@ -610,15 +570,14 @@ namespace SeroDesk.Views
         {
             if (sender is MenuItem menuItem && 
                 menuItem.Parent is ContextMenu contextMenu && 
-                contextMenu.Tag is WindowInfo window)
+                contextMenu.Tag is DockItem dockItem)
             {
                 try
                 {
-                    // Remove from dock by removing from running applications
                     if (_viewModel != null)
                     {
-                        _viewModel.RemoveFromDock(window);
-                        System.Diagnostics.Debug.WriteLine($"Unpinned {window.Title} from dock");
+                        _viewModel.RemoveFromDock(dockItem);
+                        System.Diagnostics.Debug.WriteLine($"Unpinned {dockItem.DisplayName} from dock");
                     }
                 }
                 catch (Exception ex)
@@ -632,15 +591,13 @@ namespace SeroDesk.Views
         {
             if (sender is MenuItem menuItem && 
                 menuItem.Parent is ContextMenu contextMenu && 
-                contextMenu.Tag is WindowInfo window)
+                contextMenu.Tag is DockItem dockItem)
             {
                 try
                 {
-                    // Get the process path
-                    var process = Process.GetProcessById((int)window.ProcessId);
-                    if (process.MainModule?.FileName != null)
+                    var filePath = dockItem.ExecutablePath;
+                    if (!string.IsNullOrWhiteSpace(filePath))
                     {
-                        var filePath = process.MainModule.FileName;
                         var folderPath = Path.GetDirectoryName(filePath);
                         
                         if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
@@ -661,16 +618,13 @@ namespace SeroDesk.Views
         {
             if (sender is MenuItem menuItem && 
                 menuItem.Parent is ContextMenu contextMenu && 
-                contextMenu.Tag is WindowInfo window)
+                contextMenu.Tag is DockItem dockItem)
             {
                 try
                 {
-                    // Get the process path
-                    var process = Process.GetProcessById((int)window.ProcessId);
-                    if (process.MainModule?.FileName != null)
+                    var filePath = dockItem.ExecutablePath;
+                    if (!string.IsNullOrWhiteSpace(filePath))
                     {
-                        var filePath = process.MainModule.FileName;
-                        
                         // Show properties dialog using shell execute
                         var processInfo = new ProcessStartInfo
                         {
@@ -940,7 +894,7 @@ namespace SeroDesk.Views
                 .Where(button => button.ActualWidth >= 30 &&
                                  (button == HomeButton ||
                                   button == SettingsButton ||
-                                  button.Tag is WindowInfo ||
+                                  button.Tag is DockItem ||
                                   button.ToolTip != null));
         }
 

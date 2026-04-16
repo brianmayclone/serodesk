@@ -39,6 +39,7 @@
             </Rectangle>
 
             <Border x:Name="GlassBackground"
+                    Visibility="Collapsed"
                     CornerRadius="16"
                     Background="#18FFFFFF"
                     BorderBrush="#40FFFFFF"

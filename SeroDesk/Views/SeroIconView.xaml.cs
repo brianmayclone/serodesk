@@ -123,6 +123,7 @@ namespace SeroDesk.Views
             MaterialBackdrop.Visibility = Visibility.Collapsed;
             GroupTintOverlay.Visibility = Visibility.Collapsed;
             TopSpecular.Visibility = Visibility.Collapsed;
+            GlassBackground.Visibility = Visibility.Collapsed;
             IconImage.Width = 54;
             IconImage.Height = 54;
             IconBackground.Width = 60;
@@ -158,6 +159,7 @@ namespace SeroDesk.Views
             UpdateIconBackground(dominantColor);
             MaterialBackdrop.Fill = CreateWallpaperBackdropBrush();
             MaterialBackdrop.Visibility = Visibility.Visible;
+            GlassBackground.Visibility = Visibility.Visible;
             GroupTintOverlay.Visibility = Visibility.Visible;
             TopSpecular.Visibility = Visibility.Visible;
             IconImage.Width = 44;
@@ -628,6 +630,14 @@ namespace SeroDesk.Views
         {
             try
             {
+                if (!IsGroup)
+                {
+                    GlassBackground.Background = Brushes.Transparent;
+                    GlassBackground.BorderBrush = Brushes.Transparent;
+                    GroupTintOverlay.Background = Brushes.Transparent;
+                    return;
+                }
+
                 // Create gradient brush with the dominant color
                 var gradientBrush = new LinearGradientBrush
                 {

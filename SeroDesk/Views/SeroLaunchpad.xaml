@@ -30,7 +30,7 @@
         <!-- Status Bar moved to separate StatusBarWindow -->
         
         <!-- Canvas-based Icon System -->
-        <Grid Margin="96,108,96,112">
+        <Grid Margin="72,132,72,146">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/> <!-- Suggestions + Page Indicators -->
                 <RowDefinition Height="*"/>    <!-- Icons -->
@@ -40,7 +40,7 @@
             <Border Grid.Row="0"
                     x:Name="SuggestionsBar"
                     Visibility="Collapsed"
-                    Margin="0,0,0,8"
+                    Margin="0,0,0,14"
                     Padding="12,6"
                     CornerRadius="16"
                     HorizontalAlignment="Center">
@@ -87,7 +87,7 @@
             <!-- Page Indicators (iOS-style dots) -->
             <Border Grid.Row="0"
                     HorizontalAlignment="Center"
-                    Margin="0,0,0,20"
+                    Margin="0,6,0,26"
                     Background="#30000000"
                     CornerRadius="12"
                     Padding="8,4">
@@ -145,10 +145,10 @@
         <!-- Search Bar (iOS Spotlight-style with glassmorphism) -->
         <Border x:Name="SearchBar"
                 CornerRadius="20"
-                Width="436" Height="40"
+                Width="520" Height="46"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
-                Margin="0,38,0,0"
+                Margin="0,48,0,0"
                 BorderThickness="0.8"
                 Visibility="Visible">
             <Border.Background>
@@ -174,8 +174,8 @@
                       Data="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
                       Fill="#AAFFFFFF"
                       Stretch="Uniform"
-                      Width="17" Height="17"
-                      Margin="14,0,8,0"/>
+                      Width="18" Height="18"
+                      Margin="16,0,10,0"/>
 
                 <!-- Search TextBox -->
                 <TextBox Grid.Column="1"
@@ -183,10 +183,10 @@
                         Background="Transparent"
                         BorderThickness="0"
                         Foreground="#F8FFFFFF"
-                        FontSize="14"
+                        FontSize="15"
                         FontWeight="Medium"
                         VerticalAlignment="Center"
-                        Margin="0,0,16,0"
+                        Margin="0,0,18,0"
                         CaretBrush="White"
                         AutomationProperties.Name="Search applications"
                         AutomationProperties.HelpText="Type to search for installed applications"
@@ -209,9 +209,9 @@
                 <TextBlock Grid.Column="1"
                           Text="Search"
                           Foreground="#CCFFFFFF"
-                          FontSize="14"
+                          FontSize="15"
                           VerticalAlignment="Center"
-                          Margin="0,0,16,0"
+                          Margin="0,0,18,0"
                           IsHitTestVisible="False">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">

@@ -252,12 +252,12 @@ namespace SeroDesk.Views
             // Dynamic grid calculation based on screen size
             var (columnsPerPage, rowsPerPage, _) = Constants.UIConstants.CalculateGrid(canvasWidth, canvasHeight);
 
-            var horizontalSpacing = iconWidth + 26;
-            var verticalSpacing = iconHeight + 12;
+            var horizontalSpacing = iconWidth + 44;
+            var verticalSpacing = iconHeight + 26;
             var totalGridWidth = iconWidth + ((columnsPerPage - 1) * horizontalSpacing);
             var totalGridHeight = iconHeight + ((rowsPerPage - 1) * verticalSpacing);
             var gridOriginX = Math.Max(18, (canvasWidth - totalGridWidth) / 2);
-            var gridOriginY = Math.Max(4, (canvasHeight - totalGridHeight) / 2);
+            var gridOriginY = Math.Max(12, (canvasHeight - totalGridHeight) / 2 - 8);
 
             return (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight, gridOriginX, gridOriginY);
         }
