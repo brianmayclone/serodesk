@@ -63,9 +63,14 @@ namespace SeroDesk.Platform
         [DllImport("shell32.dll")]
         public static extern int SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
         
+        public const uint ABM_NEW = 0x00000000;
+        public const uint ABM_REMOVE = 0x00000001;
+        public const uint ABM_QUERYPOS = 0x00000002;
+        public const uint ABM_SETPOS = 0x00000003;
         public const uint ABM_SETSTATE = 0x0000000A;
         public const uint ABS_AUTOHIDE = 0x0000001;
         public const uint ABS_ALWAYSONTOP = 0x0000002;
+        public const uint ABE_TOP = 1;
         
         [StructLayout(LayoutKind.Sequential)]
         public struct APPBARDATA

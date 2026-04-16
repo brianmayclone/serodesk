@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Text;
@@ -61,6 +62,8 @@ namespace SeroDesk.Views
         /// Tracks whether the user is currently on the desktop or LaunchPad view.
         /// </summary>
         private bool _isOnDesktop = true;
+        private bool _isAppBarRegistered = false;
+        private IntPtr _appBarHandle = IntPtr.Zero;
         
         /// <summary>
         /// The height of the status bar when fully visible.
@@ -135,6 +138,7 @@ namespace SeroDesk.Views
         {
             // Position status bar at top of screen
             PositionStatusBarAtTop();
+            RegisterReservedTopInset();
             
             // Connect to status bar events (if the status bar has them)
             if (StatusBar != null)
@@ -174,6 +178,93 @@ namespace SeroDesk.Views
             this.Height = STATUS_BAR_HEIGHT;
             this.Left = 0;
             this.Top = 0;
+        }
+
+        private void RegisterReservedTopInset()
+        {
+            try
+            {
+                _appBarHandle = new WindowInteropHelper(this).Handle;
+                if (_appBarHandle == IntPtr.Zero || _isAppBarRegistered)
+                {
+                    return;
+                }
+
+                var appBarData = CreateAppBarData();
+                NativeMethods.SHAppBarMessage(NativeMethods.ABM_NEW, ref appBarData);
+                _isAppBarRegistered = true;
+
+                ApplyReservedTopInset();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to register status bar appbar: {ex.Message}");
+            }
+        }
+
+        private void ApplyReservedTopInset()
+        {
+            if (!_isAppBarRegistered || _appBarHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            var appBarData = CreateAppBarData();
+            appBarData.rc.Left = 0;
+            appBarData.rc.Top = 0;
+            appBarData.rc.Right = (int)SystemParameters.PrimaryScreenWidth;
+            appBarData.rc.Bottom = STATUS_BAR_HEIGHT;
+
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref appBarData);
+            appBarData.rc.Bottom = appBarData.rc.Top + STATUS_BAR_HEIGHT;
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref appBarData);
+
+            Left = appBarData.rc.Left;
+            Top = appBarData.rc.Top;
+            Width = appBarData.rc.Right - appBarData.rc.Left;
+            Height = STATUS_BAR_HEIGHT;
+
+            NativeMethods.SetWindowPos(
+                _appBarHandle,
+                new IntPtr(NativeMethods.HWND_TOPMOST),
+                appBarData.rc.Left,
+                appBarData.rc.Top,
+                appBarData.rc.Right - appBarData.rc.Left,
+                STATUS_BAR_HEIGHT,
+                NativeMethods.SWP_NOACTIVATE);
+        }
+
+        private NativeMethods.APPBARDATA CreateAppBarData()
+        {
+            return new NativeMethods.APPBARDATA
+            {
+                cbSize = (uint)Marshal.SizeOf<NativeMethods.APPBARDATA>(),
+                hWnd = _appBarHandle,
+                uEdge = NativeMethods.ABE_TOP
+            };
+        }
+
+        private void UnregisterReservedTopInset()
+        {
+            if (!_isAppBarRegistered || _appBarHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            try
+            {
+                var appBarData = CreateAppBarData();
+                NativeMethods.SHAppBarMessage(NativeMethods.ABM_REMOVE, ref appBarData);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to unregister status bar appbar: {ex.Message}");
+            }
+            finally
+            {
+                _isAppBarRegistered = false;
+                _appBarHandle = IntPtr.Zero;
+            }
         }
         
         private void MouseTrackingTimer_Tick(object? sender, EventArgs e)
@@ -308,9 +399,8 @@ namespace SeroDesk.Views
             slideDown.Completed += (s, e) => 
             {
                 _isAnimating = false;
-                System.Diagnostics.Debug.WriteLine("ShowStatusBar: Animation completed, calling ResizeOverlappingWindows");
-                // Resize overlapping windows when StatusBar becomes visible
-                ResizeOverlappingWindows();
+                System.Diagnostics.Debug.WriteLine("ShowStatusBar: Animation completed, ensuring maximized windows respect reserved top inset");
+                RefreshMaximizedWindowsForReservedTopInset();
             };
             
             var translateTransform = new System.Windows.Media.TranslateTransform();
@@ -349,9 +439,7 @@ namespace SeroDesk.Views
             {
                 _isAnimating = false;
                 this.Visibility = Visibility.Hidden;
-                System.Diagnostics.Debug.WriteLine("HideStatusBar: Animation completed, calling RestoreResizedWindows");
-                // Restore windows to original sizes when StatusBar hides
-                RestoreResizedWindows();
+                System.Diagnostics.Debug.WriteLine("HideStatusBar: Animation completed");
             };
             
             var translateTransform = this.RenderTransform as System.Windows.Media.TranslateTransform;
@@ -425,6 +513,12 @@ namespace SeroDesk.Views
         
         private void ResizeOverlappingWindows()
         {
+            if (_isAppBarRegistered)
+            {
+                RefreshMaximizedWindowsForReservedTopInset();
+                return;
+            }
+
             System.Diagnostics.Debug.WriteLine("ResizeOverlappingWindows: Starting window resize process");
             
             // Prevent multiple simultaneous calls
@@ -562,6 +656,11 @@ namespace SeroDesk.Views
         
         private void RestoreResizedWindows()
         {
+            if (_isAppBarRegistered)
+            {
+                return;
+            }
+
             System.Diagnostics.Debug.WriteLine($"RestoreResizedWindows: Restoring {_resizedWindows.Count} windows");
             
             // Restore all windows to their original positions/sizes
@@ -660,6 +759,52 @@ namespace SeroDesk.Views
                 return false;
             }
         }
+
+        private void RefreshMaximizedWindowsForReservedTopInset()
+        {
+            if (!_isAppBarRegistered)
+            {
+                return;
+            }
+
+            NativeMethods.EnumWindows((hWnd, lParam) =>
+            {
+                try
+                {
+                    if (!NativeMethods.IsWindowVisible(hWnd) || !IsMaximizedWindow(hWnd))
+                    {
+                        return true;
+                    }
+
+                    var length = NativeMethods.GetWindowTextLength(hWnd);
+                    if (length <= 0)
+                    {
+                        return true;
+                    }
+
+                    var title = new StringBuilder(length + 1);
+                    NativeMethods.GetWindowText(hWnd, title, title.Capacity);
+                    var windowTitle = title.ToString();
+
+                    if (string.IsNullOrWhiteSpace(windowTitle) ||
+                        windowTitle.Contains("SeroDesk", StringComparison.OrdinalIgnoreCase) ||
+                        windowTitle.Contains("Launchpad", StringComparison.OrdinalIgnoreCase) ||
+                        windowTitle == "Program Manager")
+                    {
+                        return true;
+                    }
+
+                    NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+                    NativeMethods.ShowWindow(hWnd, NativeMethods.SW_MAXIMIZE);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to refresh maximized window {hWnd}: {ex.Message}");
+                }
+
+                return true;
+            }, IntPtr.Zero);
+        }
         
         // Win32 API for getting cursor position
         [StructLayout(LayoutKind.Sequential)]
@@ -674,6 +819,7 @@ namespace SeroDesk.Views
         
         protected override void OnClosed(EventArgs e)
         {
+            UnregisterReservedTopInset();
             _mouseTrackingTimer?.Stop();
             _autoHideTimer?.Stop();
             base.OnClosed(e);

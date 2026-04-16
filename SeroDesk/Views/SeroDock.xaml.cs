@@ -14,6 +14,10 @@ namespace SeroDesk.Views
 {
     public partial class SeroDock : UserControl
     {
+        private const double DockMagnificationRadius = 132;
+        private const double DockIconPeakScale = 1.18;
+        private const double DockUtilityPeakScale = 1.1;
+
         private DockViewModel? _viewModel;
         private List<IntPtr> _minimizedWindows = new List<IntPtr>();
         private bool _isDesktopMode = false;
@@ -99,15 +103,15 @@ namespace SeroDesk.Views
                 clonedBrush.Stretch = Stretch.UniformToFill;
                 clonedBrush.AlignmentX = AlignmentX.Center;
                 clonedBrush.AlignmentY = AlignmentY.Bottom;
-                clonedBrush.Opacity = 0.92;
+                clonedBrush.Opacity = 1.0;
                 return clonedBrush;
             }
 
             return new LinearGradientBrush(
                 new GradientStopCollection
                 {
-                    new(Color.FromArgb(0xE8, 0xFA, 0xFB, 0xFD), 0),
-                    new(Color.FromArgb(0xD8, 0xE7, 0xEC, 0xF4), 1)
+                    new(Color.FromArgb(0xF0, 0xFC, 0xFD, 0xFF), 0),
+                    new(Color.FromArgb(0xEC, 0xF3, 0xF6, 0xFA), 1)
                 },
                 new Point(0, 0),
                 new Point(1, 1));
@@ -221,12 +225,28 @@ namespace SeroDesk.Views
         
         private void DockIcon_MouseEnter(object sender, MouseEventArgs e)
         {
-            // Magnification effect is handled in XAML triggers
+            if (sender is Button button)
+            {
+                ApplyDockMagnification(e.GetPosition(DockBackground), button);
+            }
         }
         
         private void DockIcon_MouseLeave(object sender, MouseEventArgs e)
         {
-            // Magnification effect is handled in XAML triggers
+            if (!DockBackground.IsMouseOver)
+            {
+                ResetDockMagnification();
+            }
+        }
+
+        private void DockBackground_MouseMove(object sender, MouseEventArgs e)
+        {
+            ApplyDockMagnification(e.GetPosition(DockBackground));
+        }
+
+        private void DockBackground_MouseLeave(object sender, MouseEventArgs e)
+        {
+            ResetDockMagnification();
         }
         
         private void DockIcon_RightClick(object sender, MouseButtonEventArgs e)
@@ -429,25 +449,25 @@ namespace SeroDesk.Views
         {
             if (button == null) return;
 
-            // Ensure we have a ScaleTransform we can animate
-            var scaleTransform = button.RenderTransform as System.Windows.Media.ScaleTransform;
-            if (scaleTransform == null)
-            {
-                scaleTransform = new System.Windows.Media.ScaleTransform(1, 1);
-                button.RenderTransform = scaleTransform;
-                button.RenderTransformOrigin = new Point(0.5, 0.5);
-            }
+            var (scaleTransform, _) = EnsureDockTransforms(button);
+            var baseScaleX = scaleTransform.ScaleX;
+            var baseScaleY = scaleTransform.ScaleY;
 
             var bounceAnim = new DoubleAnimation
             {
-                To = 1.3,
+                From = baseScaleX,
+                To = baseScaleX + 0.12,
                 Duration = TimeSpan.FromMilliseconds(100),
                 AutoReverse = true,
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
 
+            var bounceAnimY = bounceAnim.Clone();
+            bounceAnimY.From = baseScaleY;
+            bounceAnimY.To = baseScaleY + 0.12;
+
             scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, bounceAnim);
-            scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, bounceAnim);
+            scaleTransform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, bounceAnimY);
         }
         
         
@@ -785,17 +805,9 @@ namespace SeroDesk.Views
                 var buttons = FindVisualChildren<Button>(this);
                 foreach (var button in buttons)
                 {
-                    if (button.RenderTransform == null)
-                    {
-                        button.RenderTransform = new System.Windows.Media.ScaleTransform();
-                        button.RenderTransformOrigin = new Point(0.5, 0.5);
-                    }
-                    
-                    if (button.RenderTransform is System.Windows.Media.ScaleTransform scaleTransform)
-                    {
-                        scaleTransform.ScaleX = iconScale;
-                        scaleTransform.ScaleY = iconScale;
-                    }
+                    var (scaleTransform, _) = EnsureDockTransforms(button);
+                    scaleTransform.ScaleX = iconScale;
+                    scaleTransform.ScaleY = iconScale;
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"Dock icon scale set to: {iconScale}x");
@@ -890,6 +902,83 @@ namespace SeroDesk.Views
             }
             
             return null;
+        }
+
+        private void ApplyDockMagnification(Point pointer, Button? preferredButton = null)
+        {
+            foreach (var button in EnumerateDockButtons())
+            {
+                var center = button.TransformToAncestor(DockBackground)
+                    .Transform(new Point(button.ActualWidth / 2, button.ActualHeight / 2));
+
+                var horizontalDistance = Math.Abs(pointer.X - center.X);
+                var verticalDistance = Math.Abs(pointer.Y - center.Y);
+                var horizontalInfluence = Math.Max(0, 1 - (horizontalDistance / DockMagnificationRadius));
+                var verticalInfluence = Math.Max(0.65, 1 - (verticalDistance / 120));
+
+                var preferredBoost = preferredButton == button ? 1.0 : 0.92;
+                var influence = Math.Pow(horizontalInfluence, 1.8) * verticalInfluence * preferredBoost;
+                var peakScale = IsUtilityButton(button) ? DockUtilityPeakScale : DockIconPeakScale;
+                var targetScale = 1 + ((peakScale - 1) * influence);
+                var targetLift = -8 * (targetScale - 1) / Math.Max(peakScale - 1, 0.01);
+
+                SetDockButtonTransform(button, targetScale, targetLift);
+            }
+        }
+
+        private void ResetDockMagnification()
+        {
+            foreach (var button in EnumerateDockButtons())
+            {
+                SetDockButtonTransform(button, 1, 0);
+            }
+        }
+
+        private IEnumerable<Button> EnumerateDockButtons()
+        {
+            return FindVisualChildren<Button>(DockBackground)
+                .Where(button => button.ActualWidth >= 30 &&
+                                 (button == HomeButton ||
+                                  button == SettingsButton ||
+                                  button.Tag is WindowInfo ||
+                                  button.ToolTip != null));
+        }
+
+        private bool IsUtilityButton(Button button)
+        {
+            return button == HomeButton ||
+                   button == SettingsButton ||
+                   button.ToolTip?.ToString() == "Files" ||
+                   button.ToolTip?.ToString() == "Recycle Bin";
+        }
+
+        private void SetDockButtonTransform(Button button, double scale, double translateY)
+        {
+            var (scaleTransform, translateTransform) = EnsureDockTransforms(button);
+            scaleTransform.ScaleX = scale;
+            scaleTransform.ScaleY = scale;
+            translateTransform.Y = translateY;
+        }
+
+        private (ScaleTransform scale, TranslateTransform translate) EnsureDockTransforms(Button button)
+        {
+            if (button.RenderTransform is TransformGroup existingGroup &&
+                existingGroup.Children.Count >= 2 &&
+                existingGroup.Children[0] is ScaleTransform existingScale &&
+                existingGroup.Children[1] is TranslateTransform existingTranslate)
+            {
+                return (existingScale, existingTranslate);
+            }
+
+            var scaleTransform = new ScaleTransform(1, 1);
+            var translateTransform = new TranslateTransform(0, 0);
+            var transformGroup = new TransformGroup();
+            transformGroup.Children.Add(scaleTransform);
+            transformGroup.Children.Add(translateTransform);
+
+            button.RenderTransformOrigin = new Point(0.5, 1.0);
+            button.RenderTransform = transformGroup;
+            return (scaleTransform, translateTransform);
         }
         
         #endregion

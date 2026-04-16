@@ -17,8 +17,8 @@ namespace SeroDesk.Views
         private bool _isVisible = true;
         private bool _isAnimating = false;
         private bool _isDesktopActive = false;
-        private const int DOCK_HEIGHT = 90;
-        private const int HIDDEN_POSITION_OFFSET = 75; // How much to hide (leave small strip visible)
+        private const int DOCK_HEIGHT = 104;
+        private const int HIDDEN_POSITION_OFFSET = 82; // How much to hide (leave small strip visible)
         
         public DockWindow()
         {
