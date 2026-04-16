@@ -19,7 +19,6 @@ namespace SeroDesk.Views
     {
         private bool _isDragging = false;
         private Point _dragStartPoint;
-        private Transform? _originalTransform;
         private bool _hasMovedDuringTouch = false;
         private DispatcherTimer? _longPressTimer;
         private Point _longPressStartPoint;
@@ -121,6 +120,16 @@ namespace SeroDesk.Views
             IconImage.Source = appIcon.IconImage;
             IconText.Text = appIcon.Name;
             IsGroup = false;
+            MaterialBackdrop.Visibility = Visibility.Collapsed;
+            GroupTintOverlay.Visibility = Visibility.Collapsed;
+            TopSpecular.Visibility = Visibility.Collapsed;
+            IconImage.Width = 56;
+            IconImage.Height = 56;
+            IconBackground.Width = 64;
+            IconBackground.Height = 64;
+            IconBackground.Margin = new Thickness(0, 4, 0, 0);
+            IconBackground.CornerRadius = new CornerRadius(18);
+            IconImage.Clip = new RectangleGeometry(new Rect(0, 0, 56, 56), 12, 12);
 
             // Show notification badge if app has one
             if (appIcon.HasBadge)
@@ -141,13 +150,23 @@ namespace SeroDesk.Views
         {
             IconImage.Source = appGroup.GroupIcon;
             IconText.Text = appGroup.Name;
-            AppCountText.Text = appGroup.Apps.Count.ToString();
-            AppCountBadge.Visibility = Visibility.Visible;
+            AppCountBadge.Visibility = Visibility.Collapsed;
             IsGroup = true;
             
             // Extract dominant color from group icon for background
             var dominantColor = ExtractDominantColorFromIcon(appGroup.GroupIcon);
             UpdateIconBackground(dominantColor);
+            MaterialBackdrop.Fill = CreateWallpaperBackdropBrush();
+            MaterialBackdrop.Visibility = Visibility.Visible;
+            GroupTintOverlay.Visibility = Visibility.Visible;
+            TopSpecular.Visibility = Visibility.Visible;
+            IconImage.Width = 46;
+            IconImage.Height = 46;
+            IconBackground.Width = 56;
+            IconBackground.Height = 56;
+            IconBackground.Margin = new Thickness(0, 8, 0, 0);
+            IconBackground.CornerRadius = new CornerRadius(14);
+            IconImage.Clip = new RectangleGeometry(new Rect(0, 0, 46, 46), 8, 8);
         }
         
         // Mouse Event Handlers
@@ -435,91 +454,109 @@ namespace SeroDesk.Views
         // Visual Feedback Methods
         private void StartDragVisual()
         {
-            // Apply drag transform (slight scale and rotation)
-            var transformGroup = new TransformGroup();
-            transformGroup.Children.Add(new ScaleTransform(1.1, 1.1));
-            transformGroup.Children.Add(new RotateTransform(2));
-            
-            _originalTransform = this.RenderTransform;
-            this.RenderTransform = transformGroup;
+            // Stop wiggle first
+            StopWiggleAnimation();
+
+            // Scale up slightly for drag feedback
+            var scaleTransform = new ScaleTransform(1.1, 1.1);
+            this.RenderTransform = scaleTransform;
             this.RenderTransformOrigin = new Point(0.5, 0.5);
-            
-            // Semi-transparent during drag
-            this.Opacity = 0.8;
-            
-            // Show drag preview
+
+            this.Opacity = 0.85;
             DragPreview.Visibility = Visibility.Visible;
-            
-            // Bring to front
             Panel.SetZIndex(this, 1000);
+
+            // CRITICAL: Clear any running Canvas animations so Canvas.SetLeft/SetTop work
+            this.BeginAnimation(Canvas.LeftProperty, null);
+            this.BeginAnimation(Canvas.TopProperty, null);
         }
-        
+
         private void EndDragVisual()
         {
-            // Restore original transform
-            this.RenderTransform = _originalTransform;
+            this.RenderTransform = Transform.Identity;
             this.Opacity = 1.0;
             DragPreview.Visibility = Visibility.Collapsed;
             Panel.SetZIndex(this, 0);
         }
-        
+
         // Animation Methods
         public void AnimateToPosition(Point targetPosition, TimeSpan duration)
         {
+            // Clear previous animations first so we get the real current value
+            this.BeginAnimation(Canvas.LeftProperty, null);
+            this.BeginAnimation(Canvas.TopProperty, null);
+
             var currentLeft = Canvas.GetLeft(this);
             var currentTop = Canvas.GetTop(this);
-            
             if (double.IsNaN(currentLeft)) currentLeft = 0;
             if (double.IsNaN(currentTop)) currentTop = 0;
-            
+
+            // Use FillBehavior.Stop so the animation doesn't hold the value
+            // and Canvas.SetLeft/SetTop work again immediately after
             var leftAnimation = new DoubleAnimation
             {
                 From = currentLeft,
                 To = targetPosition.X,
                 Duration = duration,
+                FillBehavior = FillBehavior.Stop,
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
-            
+
             var topAnimation = new DoubleAnimation
             {
                 From = currentTop,
                 To = targetPosition.Y,
                 Duration = duration,
+                FillBehavior = FillBehavior.Stop,
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
-            
+
+            // Set final values BEFORE starting animation (FillBehavior.Stop will revert to these)
+            Canvas.SetLeft(this, targetPosition.X);
+            Canvas.SetTop(this, targetPosition.Y);
+
             this.BeginAnimation(Canvas.LeftProperty, leftAnimation);
             this.BeginAnimation(Canvas.TopProperty, topAnimation);
         }
-        
+
+        /// <summary>
+        /// Instantly moves the icon without animation. Use during drag operations.
+        /// </summary>
+        public void SetPositionImmediate(double x, double y)
+        {
+            this.BeginAnimation(Canvas.LeftProperty, null);
+            this.BeginAnimation(Canvas.TopProperty, null);
+            Canvas.SetLeft(this, x);
+            Canvas.SetTop(this, y);
+        }
+
         public void StartWiggleAnimation()
         {
-            var wiggleStoryboard = new Storyboard();
-            wiggleStoryboard.RepeatBehavior = RepeatBehavior.Forever;
-            
-            var rotateAnimation = new DoubleAnimation
-            {
-                From = -1,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(100),
-                AutoReverse = true,
-                RepeatBehavior = RepeatBehavior.Forever
-            };
-            
-            var rotateTransform = new RotateTransform();
+            // Use a RotateTransform on RenderTransform for wiggle
+            var rotateTransform = new RotateTransform(0);
             this.RenderTransform = rotateTransform;
             this.RenderTransformOrigin = new Point(0.5, 0.5);
-            
-            Storyboard.SetTarget(rotateAnimation, rotateTransform);
-            Storyboard.SetTargetProperty(rotateAnimation, new PropertyPath(RotateTransform.AngleProperty));
-            
-            wiggleStoryboard.Children.Add(rotateAnimation);
-            wiggleStoryboard.Begin();
+
+            var wiggle = new DoubleAnimation
+            {
+                From = -1.5,
+                To = 1.5,
+                Duration = TimeSpan.FromMilliseconds(120),
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            rotateTransform.BeginAnimation(RotateTransform.AngleProperty, wiggle);
         }
-        
+
         public void StopWiggleAnimation()
         {
-            this.BeginStoryboard(new Storyboard(), HandoffBehavior.SnapshotAndReplace);
+            // Stop all RenderTransform animations
+            if (this.RenderTransform is RotateTransform rt)
+            {
+                rt.BeginAnimation(RotateTransform.AngleProperty, null);
+            }
             this.RenderTransform = Transform.Identity;
         }
         
@@ -613,11 +650,66 @@ namespace SeroDesk.Views
                 {
                     glassBackground.Background = gradientBrush;
                 }
+
+                GroupTintOverlay.Background = new LinearGradientBrush(
+                    new GradientStopCollection
+                    {
+                        new(Color.FromArgb(0x70, dominantColor.R, dominantColor.G, dominantColor.B), 0),
+                        new(Color.FromArgb(0x30, dominantColor.R, dominantColor.G, dominantColor.B), 1)
+                    },
+                    new Point(0, 0),
+                    new Point(1, 1));
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error updating icon background: {ex.Message}");
             }
+        }
+
+        private Brush CreateWallpaperBackdropBrush()
+        {
+            try
+            {
+                var launchpad = FindAncestor<SeroLaunchpad>(this);
+                if (launchpad?.DataContext is LaunchpadViewModel launchpadViewModel &&
+                    launchpadViewModel.CurrentWallpaper is ImageBrush wallpaper)
+                {
+                    var clonedBrush = wallpaper.CloneCurrentValue();
+                    clonedBrush.Stretch = Stretch.UniformToFill;
+                    clonedBrush.AlignmentX = AlignmentX.Center;
+                    clonedBrush.AlignmentY = AlignmentY.Center;
+                    return clonedBrush;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating wallpaper backdrop brush: {ex.Message}");
+            }
+
+            return new LinearGradientBrush(
+                new GradientStopCollection
+                {
+                    new(Color.FromArgb(0xC8, 0x74, 0x84, 0x9B), 0),
+                    new(Color.FromArgb(0xC0, 0x31, 0x3C, 0x4D), 1)
+                },
+                new Point(0, 0),
+                new Point(1, 1));
+        }
+
+        private static T? FindAncestor<T>(DependencyObject child) where T : DependencyObject
+        {
+            var current = VisualTreeHelper.GetParent(child);
+            while (current != null)
+            {
+                if (current is T target)
+                {
+                    return target;
+                }
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            return null;
         }
         
         // HSV color space conversion helpers

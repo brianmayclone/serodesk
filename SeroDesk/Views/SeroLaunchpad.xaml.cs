@@ -312,18 +312,28 @@ namespace SeroDesk.Views
             // Position the expanded view near the group's location
             PositionGroupExpandedView(group);
             
-            // Show overlay with animation
+            // Show overlay with scale + fade animation (iOS-style)
             GroupExpandedOverlay.Visibility = Visibility.Visible;
-            
-            // Fade in animation
-            var fadeIn = new DoubleAnimation
+            GroupExpandedOverlay.Opacity = 0;
+
+            var expandedContainer = GroupExpandedOverlay.Children.OfType<Border>().FirstOrDefault();
+            if (expandedContainer != null)
             {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(300),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            
+                var scaleTransform = new ScaleTransform(0.85, 0.85);
+                expandedContainer.RenderTransform = scaleTransform;
+                expandedContainer.RenderTransformOrigin = new Point(0.5, 0.5);
+
+                var scaleX = new DoubleAnimation(0.85, 1.0, TimeSpan.FromMilliseconds(250))
+                { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                var scaleY = new DoubleAnimation(0.85, 1.0, TimeSpan.FromMilliseconds(250))
+                { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
+            }
+
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200))
+            { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
             GroupExpandedOverlay.BeginAnimation(OpacityProperty, fadeIn);
         }
         
@@ -399,24 +409,25 @@ namespace SeroDesk.Views
 
         private void CloseGroupExpanded_Click(object sender, RoutedEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("CloseGroupExpanded_Click called - closing group overlay");
-            
-            // Fade out animation
-            var fadeOut = new DoubleAnimation
+            // Scale down + fade out (iOS folder close style)
+            var expandedContainer = GroupExpandedOverlay.Children.OfType<Border>().FirstOrDefault();
+            if (expandedContainer?.RenderTransform is ScaleTransform scaleTransform)
             {
-                From = 1,
-                To = 0,
-                Duration = TimeSpan.FromMilliseconds(200),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
-            
+                var scaleDown = new DoubleAnimation(1.0, 0.85, TimeSpan.FromMilliseconds(180))
+                { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleDown);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleDown);
+            }
+
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180))
+            { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
+
             fadeOut.Completed += (s, args) =>
             {
-                System.Diagnostics.Debug.WriteLine("Group overlay fade out completed - hiding overlay");
                 GroupExpandedOverlay.Visibility = Visibility.Collapsed;
                 GroupAppsGrid.ItemsSource = null;
             };
-            
+
             GroupExpandedOverlay.BeginAnimation(OpacityProperty, fadeOut);
         }
         
@@ -536,18 +547,24 @@ namespace SeroDesk.Views
         private void OnIconDragStarted(object? sender, IconDragEventArgs e)
         {
             _draggedIcon = e.IconView;
-            
+
             if (_draggedIcon != null)
             {
+                // CRITICAL: Clear any running Canvas animations before reading position
+                _draggedIcon.BeginAnimation(Canvas.LeftProperty, null);
+                _draggedIcon.BeginAnimation(Canvas.TopProperty, null);
+
+                var currentLeft = Canvas.GetLeft(_draggedIcon);
+                var currentTop = Canvas.GetTop(_draggedIcon);
+                if (double.IsNaN(currentLeft)) currentLeft = 0;
+                if (double.IsNaN(currentTop)) currentTop = 0;
+
                 _dragOffset = new Point(
-                    e.Position.X - Canvas.GetLeft(_draggedIcon),
-                    e.Position.Y - Canvas.GetTop(_draggedIcon)
+                    e.Position.X - currentLeft,
+                    e.Position.Y - currentTop
                 );
-                
-                // Start wiggle animation on all other icons
+
                 StartWiggleAnimationForAll(except: _draggedIcon);
-                
-                System.Diagnostics.Debug.WriteLine($"Drag started for {(_draggedIcon.AppIcon?.Name ?? _draggedIcon.AppGroup?.Name)}");
             }
         }
         
@@ -562,8 +579,9 @@ namespace SeroDesk.Views
 
             var newX = e.Position.X - _dragOffset.X;
             var newY = e.Position.Y - _dragOffset.Y;
-            Canvas.SetLeft(_draggedIcon, newX);
-            Canvas.SetTop(_draggedIcon, newY);
+
+            // Use SetPositionImmediate to bypass any active Canvas animations
+            _draggedIcon.SetPositionImmediate(newX, newY);
 
             var canvasWidth = IconCanvas.ActualWidth;
             if (canvasWidth <= 0 || double.IsNaN(canvasWidth)) canvasWidth = 1600;

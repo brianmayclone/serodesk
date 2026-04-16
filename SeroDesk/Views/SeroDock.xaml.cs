@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Text;
 using System.Collections.Generic;
@@ -29,6 +30,7 @@ namespace SeroDesk.Views
             Loaded += (s, e) =>
             {
                 _viewModel = DataContext as DockViewModel;
+                ApplyBackdropMaterial();
                 LoadSystemIcons();
             };
         }
@@ -43,6 +45,7 @@ namespace SeroDesk.Views
             // Load system icons with delay to ensure UI is fully loaded
             this.Dispatcher.BeginInvoke(new Action(() =>
             {
+                ApplyBackdropMaterial();
                 LoadSystemIcons();
             }), System.Windows.Threading.DispatcherPriority.Loaded);
             
@@ -73,6 +76,40 @@ namespace SeroDesk.Views
             {
                 Services.Logger.Error("LoadSystemIcons failed", ex);
             }
+        }
+
+        private void ApplyBackdropMaterial()
+        {
+            try
+            {
+                DockBackdropMaterial.Fill = CreateBackdropBrush();
+            }
+            catch (Exception ex)
+            {
+                Services.Logger.Warn($"Failed to apply dock backdrop material: {ex.Message}");
+            }
+        }
+
+        private Brush CreateBackdropBrush()
+        {
+            if (Application.Current?.MainWindow?.DataContext is MainViewModel mainViewModel &&
+                mainViewModel.Launchpad.CurrentWallpaper is ImageBrush wallpaperBrush)
+            {
+                var clonedBrush = wallpaperBrush.CloneCurrentValue();
+                clonedBrush.Stretch = Stretch.UniformToFill;
+                clonedBrush.AlignmentX = AlignmentX.Center;
+                clonedBrush.AlignmentY = AlignmentY.Bottom;
+                return clonedBrush;
+            }
+
+            return new LinearGradientBrush(
+                new GradientStopCollection
+                {
+                    new(Color.FromArgb(0xD0, 0x74, 0x84, 0x9B), 0),
+                    new(Color.FromArgb(0xC8, 0x36, 0x45, 0x59), 1)
+                },
+                new Point(0, 0),
+                new Point(1, 1));
         }
 
         private void LoadSystemIconDelayed(string imageName, Func<System.Windows.Media.ImageSource?> iconLoader)

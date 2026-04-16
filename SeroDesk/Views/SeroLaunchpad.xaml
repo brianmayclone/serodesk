@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:SeroDesk.Views"
+             xmlns:effects="clr-namespace:SeroDesk.Effects"
              mc:Ignorable="d"
              d:DesignHeight="1080" d:DesignWidth="1920">
     
@@ -303,19 +304,13 @@
               Background="#90000000"
               Visibility="Collapsed"
               MouseLeftButtonDown="GroupExpandedOverlay_MouseDown">
-            <Border CornerRadius="24"
+            <Border CornerRadius="30"
                     MaxWidth="520"
                     MaxHeight="460"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Margin="40">
-                <Border.Background>
-                    <SolidColorBrush Color="#1C1C1E" Opacity="0.92"/>
-                </Border.Background>
-                <Border.BorderBrush>
-                    <SolidColorBrush Color="#FFFFFF" Opacity="0.12"/>
-                </Border.BorderBrush>
-                <Border.BorderThickness>1</Border.BorderThickness>
+                    Margin="40"
+                    ClipToBounds="True">
                 <Border.Effect>
                     <DropShadowEffect Color="Black" BlurRadius="40" Opacity="0.5" ShadowDepth="8"/>
                 </Border.Effect>
@@ -325,20 +320,53 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Group Header with editable name -->
+                    <Rectangle Stretch="Fill"
+                               Fill="{Binding CurrentWallpaper}">
+                        <Rectangle.Effect>
+                            <effects:LiquidGlassShaderEffect Distortion="0.54"
+                                                             EdgeIntensity="0.9"
+                                                             GlowAmount="0.68"
+                                                             SaturationBoost="0.62"/>
+                        </Rectangle.Effect>
+                    </Rectangle>
+                    <Border CornerRadius="30"
+                            Background="#A6DCE5F2"
+                            BorderBrush="#96FFFFFF"
+                            BorderThickness="1.1"/>
+                    <Border CornerRadius="30"
+                            Margin="1"
+                            Background="#18FFFFFF"/>
+                    <Border Height="120"
+                            VerticalAlignment="Top"
+                            Margin="16,8,16,0"
+                            CornerRadius="24"
+                            Opacity="0.72"
+                            IsHitTestVisible="False">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#F6FFFFFF" Offset="0"/>
+                                <GradientStop Color="#54FFFFFF" Offset="0.55"/>
+                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
                     <TextBlock x:Name="GroupExpandedTitle"
                               Text="Group Name"
-                              Foreground="White"
-                              FontSize="22"
+                              Foreground="#F8FFFFFF"
+                              FontSize="24"
                               FontWeight="SemiBold"
                               HorizontalAlignment="Center"
-                              Margin="24,24,24,16"/>
+                              Margin="24,28,24,18">
+                        <TextBlock.Effect>
+                            <DropShadowEffect Color="#50000000" BlurRadius="6" ShadowDepth="1" Opacity="0.55"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
 
                     <!-- Group Apps Grid -->
                     <ScrollViewer Grid.Row="1"
                                  VerticalScrollBarVisibility="Auto"
                                  HorizontalScrollBarVisibility="Disabled"
-                                 Margin="16,0,16,20">
+                                 Margin="18,0,18,24">
                         <ItemsControl x:Name="GroupAppsGrid">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -364,7 +392,7 @@
                                                            HorizontalAlignment="Center"
                                                            ClipToBounds="True">
                                                         <Border.Effect>
-                                                            <DropShadowEffect BlurRadius="6" Opacity="0.25" ShadowDepth="2"/>
+                                                            <DropShadowEffect BlurRadius="10" Opacity="0.28" ShadowDepth="3"/>
                                                         </Border.Effect>
                                                         <Image Source="{Binding IconImage}"
                                                                Width="56" Height="56"
@@ -374,7 +402,7 @@
 
                                                     <!-- App Name -->
                                                     <TextBlock Text="{Binding Name}"
-                                                             Foreground="#DDFFFFFF"
+                                                             Foreground="#F2FFFFFF"
                                                              FontSize="10"
                                                              TextAlignment="Center"
                                                              TextWrapping="NoWrap"

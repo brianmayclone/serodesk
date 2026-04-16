@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:effects="clr-namespace:SeroDesk.Effects"
              mc:Ignorable="d"
              Width="90" Height="120"
              d:DesignHeight="100" d:DesignWidth="80">
@@ -20,28 +21,58 @@
             </ContextMenu>
         </Grid.ContextMenu>
 
-        <!-- iOS-style Icon Background with dynamic color -->
-        <Border x:Name="GlassBackground"
-                CornerRadius="18"
-                Width="64" Height="64"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Center"
-                Margin="0,4,0,0">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#30FFFFFF" Offset="0"/>
-                    <GradientStop Color="#10FFFFFF" Offset="0.5"/>
-                    <GradientStop Color="#20FFFFFF" Offset="1"/>
-                </LinearGradientBrush>
-            </Border.Background>
-            <Border.BorderBrush>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#40FFFFFF" Offset="0"/>
-                    <GradientStop Color="#15FFFFFF" Offset="1"/>
-                </LinearGradientBrush>
-            </Border.BorderBrush>
-            <Border.BorderThickness>0.8</Border.BorderThickness>
-        </Border>
+        <Grid Width="64"
+              Height="64"
+              VerticalAlignment="Top"
+              HorizontalAlignment="Center"
+              Margin="0,4,0,0">
+            <Rectangle x:Name="MaterialBackdrop"
+                       RadiusX="18"
+                       RadiusY="18"
+                       Visibility="Collapsed">
+                <Rectangle.Effect>
+                    <effects:LiquidGlassShaderEffect Distortion="0.5"
+                                                     EdgeIntensity="0.82"
+                                                     GlowAmount="0.62"
+                                                     SaturationBoost="0.48"/>
+                </Rectangle.Effect>
+            </Rectangle>
+
+            <Border x:Name="GlassBackground"
+                    CornerRadius="18"
+                    Background="#24FFFFFF"
+                    BorderBrush="#50FFFFFF"
+                    BorderThickness="0.8"/>
+
+            <Border x:Name="GroupTintOverlay"
+                    CornerRadius="18"
+                    Visibility="Collapsed"
+                    BorderBrush="#7AFFFFFF"
+                    BorderThickness="0.8">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#50FFFFFF" Offset="0"/>
+                        <GradientStop Color="#18FFFFFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <Border x:Name="TopSpecular"
+                    Height="22"
+                    Margin="6,4,6,0"
+                    VerticalAlignment="Top"
+                    CornerRadius="12"
+                    Opacity="0.7"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#D8FFFFFF" Offset="0"/>
+                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+        </Grid>
 
         <!-- Icon Container -->
         <Border x:Name="IconBackground"

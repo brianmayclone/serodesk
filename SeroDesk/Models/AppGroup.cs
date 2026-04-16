@@ -233,13 +233,14 @@ namespace SeroDesk.Models
             {
                 Width = 64,
                 Height = 64,
-                Background = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF))
+                Background = Brushes.Transparent
             };
             
             // Add up to 4 app icons in a 2x2 grid
             var appsToShow = Apps.Take(4).ToList();
-            var iconSize = appsToShow.Count <= 2 ? 28 : 20;
-            var spacing = appsToShow.Count <= 2 ? 8 : 4;
+            var iconSize = appsToShow.Count <= 2 ? 24 : 20;
+            var spacing = appsToShow.Count <= 2 ? 8 : 5;
+            var inset = appsToShow.Count <= 2 ? 8 : 7;
             
             for (int i = 0; i < appsToShow.Count; i++)
             {
@@ -251,12 +252,13 @@ namespace SeroDesk.Models
                         Width = iconSize,
                         Height = iconSize
                     };
+                    image.Clip = new RectangleGeometry(new System.Windows.Rect(0, 0, iconSize, iconSize), 5, 5);
                     
                     var row = i / 2;
                     var col = i % 2;
                     
-                    System.Windows.Controls.Canvas.SetLeft(image, spacing + col * (iconSize + spacing));
-                    System.Windows.Controls.Canvas.SetTop(image, spacing + row * (iconSize + spacing));
+                    System.Windows.Controls.Canvas.SetLeft(image, inset + col * (iconSize + spacing));
+                    System.Windows.Controls.Canvas.SetTop(image, inset + row * (iconSize + spacing));
                     
                     canvas.Children.Add(image);
                 }
