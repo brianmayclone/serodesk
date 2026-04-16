@@ -476,6 +476,33 @@ namespace SeroDesk.Views
             _autoHideTimer.Stop();
             _autoHideTimer.Start();
         }
+
+        public void PrepareForDebugCapture()
+        {
+            _mouseTrackingTimer.Stop();
+            _autoHideTimer.Stop();
+            _isAnimating = false;
+            _isOnDesktop = true;
+            _isVisible = true;
+
+            PositionStatusBarAtTop();
+            ApplyReservedTopInset();
+            SetStatusBarBackground(true);
+
+            Visibility = Visibility.Visible;
+            Opacity = 1;
+            Topmost = true;
+
+            if (RenderTransform is System.Windows.Media.TranslateTransform translateTransform)
+            {
+                translateTransform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
+                translateTransform.Y = 0;
+            }
+            else
+            {
+                RenderTransform = new System.Windows.Media.TranslateTransform(0, 0);
+            }
+        }
         
         /// <summary>
         /// Update desktop state (call this when switching between desktop and apps)

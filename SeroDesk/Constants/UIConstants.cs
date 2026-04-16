@@ -53,22 +53,22 @@ namespace SeroDesk.Constants
         /// <summary>
         /// The size of application icons in pixels (width and height).
         /// </summary>
-        public const int IconSize = 64;
+        public const int IconSize = 60;
 
         /// <summary>
         /// The total width of an icon cell (icon + label + margins).
         /// </summary>
-        public const double IconCellWidth = 90.0;
+        public const double IconCellWidth = 84.0;
 
         /// <summary>
         /// The total height of an icon cell (icon + label + margins).
         /// </summary>
-        public const double IconCellHeight = 120.0;
+        public const double IconCellHeight = 106.0;
 
         /// <summary>
         /// Minimum spacing between icons in pixels.
         /// </summary>
-        public const int IconSpacing = 16;
+        public const int IconSpacing = 22;
 
         /// <summary>
         /// Duration of page transition animations in milliseconds.
@@ -85,8 +85,8 @@ namespace SeroDesk.Constants
             if (canvasHeight <= 0 || double.IsNaN(canvasHeight)) canvasHeight = 600;
 
             // Calculate how many icons fit based on cell size + minimum spacing
-            int columns = Math.Max(3, Math.Min(10, (int)(canvasWidth / (IconCellWidth + IconSpacing))));
-            int rows = Math.Max(2, Math.Min(7, (int)(canvasHeight / (IconCellHeight + IconSpacing / 2))));
+            int columns = Math.Max(4, Math.Min(8, (int)(canvasWidth / (IconCellWidth + IconSpacing))));
+            int rows = Math.Max(3, Math.Min(6, (int)(canvasHeight / (IconCellHeight + IconSpacing / 2))));
 
             return (columns, rows, columns * rows);
         }

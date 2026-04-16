@@ -16,11 +16,14 @@ namespace SeroDesk.Views
             InitializeComponent();
             DataContext = SystemStatusService.Instance;
             
-            // Show debug button only in debug builds
+            // Keep the visual status bar clean; debug exit stays on Shift+Esc.
 #if DEBUG
-            DebugExitButton.Visibility = Visibility.Visible;
+            var showDebugExit = !App.IsDebugCaptureMode && System.Diagnostics.Debugger.IsAttached;
+            DebugExitButton.Visibility = showDebugExit ? Visibility.Visible : Visibility.Collapsed;
+            DebugExitContainer.Visibility = showDebugExit ? Visibility.Visible : Visibility.Collapsed;
 #else
             DebugExitButton.Visibility = Visibility.Collapsed;
+            DebugExitContainer.Visibility = Visibility.Collapsed;
 #endif
             
             // Add click handlers for left and right sides

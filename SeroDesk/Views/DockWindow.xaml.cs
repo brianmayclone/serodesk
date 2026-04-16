@@ -279,6 +279,28 @@ namespace SeroDesk.Views
         {
             ShowDock();
         }
+
+        public void PrepareForDebugCapture()
+        {
+            _mouseTrackingTimer.Stop();
+            _hideTimer.Stop();
+            _desktopCheckTimer.Stop();
+            _isAnimating = false;
+            _isDesktopActive = true;
+            _isVisible = true;
+
+            Show();
+            Visibility = Visibility.Visible;
+            WindowState = WindowState.Normal;
+            Opacity = 1;
+            Topmost = true;
+
+            PositionDockAtBottom();
+            CenterDockHorizontally();
+
+            BeginAnimation(Window.TopProperty, null);
+            BeginAnimation(Window.OpacityProperty, null);
+        }
         
         /// <summary>
         /// Public method to check if dock is currently visible

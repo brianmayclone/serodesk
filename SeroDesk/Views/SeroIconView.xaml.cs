@@ -123,13 +123,13 @@ namespace SeroDesk.Views
             MaterialBackdrop.Visibility = Visibility.Collapsed;
             GroupTintOverlay.Visibility = Visibility.Collapsed;
             TopSpecular.Visibility = Visibility.Collapsed;
-            IconImage.Width = 56;
-            IconImage.Height = 56;
-            IconBackground.Width = 64;
-            IconBackground.Height = 64;
-            IconBackground.Margin = new Thickness(0, 4, 0, 0);
-            IconBackground.CornerRadius = new CornerRadius(18);
-            IconImage.Clip = new RectangleGeometry(new Rect(0, 0, 56, 56), 12, 12);
+            IconImage.Width = 54;
+            IconImage.Height = 54;
+            IconBackground.Width = 60;
+            IconBackground.Height = 60;
+            IconBackground.Margin = new Thickness(0, 2, 0, 0);
+            IconBackground.CornerRadius = new CornerRadius(16);
+            IconImage.Clip = new RectangleGeometry(new Rect(0, 0, 54, 54), 12, 12);
 
             // Show notification badge if app has one
             if (appIcon.HasBadge)
@@ -160,13 +160,13 @@ namespace SeroDesk.Views
             MaterialBackdrop.Visibility = Visibility.Visible;
             GroupTintOverlay.Visibility = Visibility.Visible;
             TopSpecular.Visibility = Visibility.Visible;
-            IconImage.Width = 46;
-            IconImage.Height = 46;
-            IconBackground.Width = 56;
-            IconBackground.Height = 56;
-            IconBackground.Margin = new Thickness(0, 8, 0, 0);
+            IconImage.Width = 44;
+            IconImage.Height = 44;
+            IconBackground.Width = 54;
+            IconBackground.Height = 54;
+            IconBackground.Margin = new Thickness(0, 6, 0, 0);
             IconBackground.CornerRadius = new CornerRadius(14);
-            IconImage.Clip = new RectangleGeometry(new Rect(0, 0, 46, 46), 8, 8);
+            IconImage.Clip = new RectangleGeometry(new Rect(0, 0, 44, 44), 8, 8);
         }
         
         // Mouse Event Handlers

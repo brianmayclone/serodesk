@@ -10,7 +10,7 @@
     <Border x:Name="StatusBarBackground"
             Background="#00000000"
             BorderThickness="0">
-        <Grid Margin="24,0">
+        <Grid Margin="18,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -43,22 +43,22 @@
 
                 <TextBlock Text="{Binding NetworkStatus}"
                           Foreground="White"
-                          FontSize="13"
-                          FontWeight="SemiBold"
+                          FontSize="12"
+                          FontWeight="Medium"
                           VerticalAlignment="Center"
-                          Opacity="0.95"/>
+                          Opacity="0.92"/>
             </StackPanel>
 
             <!-- Center: Time -->
             <TextBlock Grid.Column="1"
                       Text="{Binding CurrentTime}"
                       Foreground="White"
-                      FontSize="15"
-                      FontWeight="Bold"
+                      FontSize="14"
+                      FontWeight="SemiBold"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Center">
                 <TextBlock.Effect>
-                    <DropShadowEffect Color="Black" BlurRadius="3" ShadowDepth="0.5" Opacity="0.4"/>
+                    <DropShadowEffect Color="Black" BlurRadius="2" ShadowDepth="0.5" Opacity="0.25"/>
                 </TextBlock.Effect>
             </TextBlock>
 
@@ -69,7 +69,8 @@
                        VerticalAlignment="Center">
 
                 <!-- Debug Exit Button -->
-                <Border Background="#E0FF3B30"
+                <Border x:Name="DebugExitContainer"
+                        Background="#E0FF3B30"
                         CornerRadius="4"
                         Padding="6,2"
                         Margin="0,0,10,0"
@@ -90,35 +91,37 @@
                 <!-- Battery Percentage -->
                 <TextBlock Text="{Binding BatteryPercentage, StringFormat={}{0}%}"
                           Foreground="White"
-                          FontSize="13"
-                          FontWeight="SemiBold"
+                          FontSize="12"
+                          FontWeight="Medium"
                           VerticalAlignment="Center"
-                          Margin="0,0,5,0"
-                          Opacity="0.95"/>
+                          Margin="0,0,6,0"
+                          Opacity="0.92"/>
 
                 <!-- Battery Icon -->
-                <Grid Width="25" Height="12" VerticalAlignment="Center">
-                    <Border Background="Transparent"
-                           BorderBrush="White"
-                           BorderThickness="1.2"
-                           CornerRadius="2.5"
-                           Width="22" Height="11"
+                <Grid Width="24" Height="12" VerticalAlignment="Center">
+                    <Border Background="#10FFFFFF"
+                           BorderBrush="#E8FFFFFF"
+                           BorderThickness="1.1"
+                           CornerRadius="2.6"
+                           Width="20" Height="10"
                            HorizontalAlignment="Left"
-                           Opacity="0.9"/>
-                    <Border Background="White"
-                           Width="1.5" Height="5"
+                           Opacity="0.92"/>
+                    <Border Background="#D8FFFFFF"
+                           Width="1.6" Height="4"
                            HorizontalAlignment="Right"
                            CornerRadius="0,1,1,0"
-                           Opacity="0.5"/>
+                           Opacity="0.75"
+                           Margin="0,0,0.5,0"/>
                     <Border Background="{Binding BatteryPercentage, Converter={StaticResource BatteryToBrushConverter}}"
                            Width="{Binding BatteryPercentage, Converter={StaticResource BatteryToWidthConverter}}"
-                           Height="7"
+                           Height="6"
                            HorizontalAlignment="Left"
+                           VerticalAlignment="Center"
                            Margin="2,0,0,0"
                            CornerRadius="1.5"/>
                     <Path Data="M11.67,3.5L9.17,8.5H11L9.33,12.5L12.83,7.5H11L11.67,3.5Z"
                           Fill="White" Stretch="Uniform"
-                          Width="7" Height="7"
+                          Width="6" Height="6"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center"
                           Visibility="{Binding IsCharging, Converter={StaticResource BooleanToVisibilityConverter}}"/>

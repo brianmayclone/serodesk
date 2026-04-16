@@ -4,6 +4,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using System.Linq;
 using SeroDesk.Constants;
 using SeroDesk.Platform;
 using SeroDesk.Services;
@@ -170,7 +171,10 @@ namespace SeroDesk
             FadeIn();
 
             // Show onboarding on first run
-            OnboardingService.ShowIfNeeded();
+            if (!App.IsDebugCaptureMode)
+            {
+                OnboardingService.ShowIfNeeded();
+            }
         }
         
         private void SetupOverlayWindow()
@@ -423,6 +427,29 @@ namespace SeroDesk
         public void HideLaunchpad()
         {
             _launchpadWindow?.HideLaunchpad();
+        }
+
+        public void PrepareForDebugCapture()
+        {
+            HideLaunchpad();
+            HideNotificationCenter();
+            HideControlCenter();
+
+            WindowState = WindowState.Maximized;
+            Show();
+
+            if (_dockWindow != null)
+            {
+                _dockWindow.PrepareForDebugCapture();
+            }
+
+            var statusBarWindow = Application.Current.Windows
+                .OfType<StatusBarWindow>()
+                .FirstOrDefault(window => window.IsLoaded);
+
+            statusBarWindow?.PrepareForDebugCapture();
+
+            SendShellToBack();
         }
         
         private void ShowAllWindows()

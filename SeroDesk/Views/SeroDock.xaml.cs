@@ -14,9 +14,9 @@ namespace SeroDesk.Views
 {
     public partial class SeroDock : UserControl
     {
-        private const double DockMagnificationRadius = 132;
-        private const double DockIconPeakScale = 1.18;
-        private const double DockUtilityPeakScale = 1.1;
+        private const double DockMagnificationRadius = 138;
+        private const double DockIconPeakScale = 1.16;
+        private const double DockUtilityPeakScale = 1.14;
 
         private DockViewModel? _viewModel;
         private List<IntPtr> _minimizedWindows = new List<IntPtr>();
@@ -103,15 +103,15 @@ namespace SeroDesk.Views
                 clonedBrush.Stretch = Stretch.UniformToFill;
                 clonedBrush.AlignmentX = AlignmentX.Center;
                 clonedBrush.AlignmentY = AlignmentY.Bottom;
-                clonedBrush.Opacity = 1.0;
+                clonedBrush.Opacity = 0.58;
                 return clonedBrush;
             }
 
             return new LinearGradientBrush(
                 new GradientStopCollection
                 {
-                    new(Color.FromArgb(0xF0, 0xFC, 0xFD, 0xFF), 0),
-                    new(Color.FromArgb(0xEC, 0xF3, 0xF6, 0xFA), 1)
+                    new(Color.FromArgb(0xF2, 0xFF, 0xFF, 0xFF), 0),
+                    new(Color.FromArgb(0xEE, 0xF4, 0xF6, 0xF8), 1)
                 },
                 new Point(0, 0),
                 new Point(1, 1));

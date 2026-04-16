@@ -238,7 +238,7 @@ namespace SeroDesk.Views
         // Removed UpdateIconVisibility method - now handled entirely by ViewModel
         // to avoid conflicts between cached icons and proper search results
         
-        private (double canvasWidth, double canvasHeight, int columnsPerPage, int rowsPerPage, double horizontalSpacing, double verticalSpacing, double iconWidth, double iconHeight) GetGridDimensions()
+        private (double canvasWidth, double canvasHeight, int columnsPerPage, int rowsPerPage, double horizontalSpacing, double verticalSpacing, double iconWidth, double iconHeight, double gridOriginX, double gridOriginY) GetGridDimensions()
         {
             var canvasWidth = IconCanvas?.ActualWidth ?? 1600;
             var canvasHeight = IconCanvas?.ActualHeight ?? 600;
@@ -252,10 +252,14 @@ namespace SeroDesk.Views
             // Dynamic grid calculation based on screen size
             var (columnsPerPage, rowsPerPage, _) = Constants.UIConstants.CalculateGrid(canvasWidth, canvasHeight);
 
-            var horizontalSpacing = canvasWidth / columnsPerPage;
-            var verticalSpacing = canvasHeight / rowsPerPage;
+            var horizontalSpacing = iconWidth + 26;
+            var verticalSpacing = iconHeight + 12;
+            var totalGridWidth = iconWidth + ((columnsPerPage - 1) * horizontalSpacing);
+            var totalGridHeight = iconHeight + ((rowsPerPage - 1) * verticalSpacing);
+            var gridOriginX = Math.Max(18, (canvasWidth - totalGridWidth) / 2);
+            var gridOriginY = Math.Max(4, (canvasHeight - totalGridHeight) / 2);
 
-            return (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight);
+            return (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight, gridOriginX, gridOriginY);
         }
         
         // Removed RepositionSearchResults method - now handled by CreateIconViews
@@ -792,13 +796,14 @@ namespace SeroDesk.Views
         
         private Point CalculateGridPosition(Point screenPosition)
         {
-            var (canvasWidth, _, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, _, _) = GetGridDimensions();
+            var (canvasWidth, _, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, _, _, gridOriginX, gridOriginY) = GetGridDimensions();
 
             var currentPageOffset = _viewModel?.CurrentPage ?? 0;
-            var adjustedX = screenPosition.X + (currentPageOffset * canvasWidth);
+            var adjustedX = Math.Max(0, screenPosition.X - gridOriginX) + (currentPageOffset * canvasWidth);
+            var adjustedY = Math.Max(0, screenPosition.Y - gridOriginY);
             
             var globalCol = (int)(adjustedX / horizontalSpacing);
-            var row = Math.Max(0, Math.Min(rowsPerPage - 1, (int)(screenPosition.Y / verticalSpacing)));
+            var row = Math.Max(0, Math.Min(rowsPerPage - 1, (int)(adjustedY / verticalSpacing)));
             
             // Keep within current page bounds for now (multi-page drag later)
             var col = Math.Max(0, Math.Min(columnsPerPage - 1, globalCol % columnsPerPage));
@@ -809,7 +814,7 @@ namespace SeroDesk.Views
         
         private void AnimateIconsToMakeSpace(Point targetGridPos, SeroIconView draggedIcon)
         {
-            var (_, _, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
+            var (_, _, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight, gridOriginX, gridOriginY) = GetGridDimensions();
             var iconsPerPage = columnsPerPage * rowsPerPage;
             
             // Calculate target index in global grid
@@ -839,8 +844,8 @@ namespace SeroDesk.Views
                     // Calculate new grid position
                     var newRow = currentLayoutIndex / columnsPerPage;
                     var newCol = currentLayoutIndex % columnsPerPage;
-                    var newX = newCol * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
-                    var newY = newRow * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                    var newX = gridOriginX + (newCol * horizontalSpacing);
+                    var newY = gridOriginY + (newRow * verticalSpacing);
                     
                     // Only animate if position changed
                     var oldIndex = (int)(icon.GridPosition.Y * columnsPerPage + icon.GridPosition.X);
@@ -858,10 +863,10 @@ namespace SeroDesk.Views
         
         private void FinalizeIconPositions(Point targetGridPos, SeroIconView draggedIcon)
         {
-            var (_, _, columnsPerPage, _, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
+            var (_, _, columnsPerPage, _, horizontalSpacing, verticalSpacing, iconWidth, iconHeight, gridOriginX, gridOriginY) = GetGridDimensions();
             
-            var finalX = targetGridPos.X * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
-            var finalY = targetGridPos.Y * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+            var finalX = gridOriginX + (targetGridPos.X * horizontalSpacing);
+            var finalY = gridOriginY + (targetGridPos.Y * verticalSpacing);
             
             System.Diagnostics.Debug.WriteLine($"Snap to grid: ({finalX},{finalY}) with spacing {horizontalSpacing}x{verticalSpacing}");
             
@@ -877,7 +882,7 @@ namespace SeroDesk.Views
         {
             if (_viewModel == null) return;
 
-            var (_, _, columnsPerPage, rowsPerPage, _, _, _, _) = GetGridDimensions();
+            var (_, _, columnsPerPage, rowsPerPage, _, _, _, _, _, _) = GetGridDimensions();
 
             // Collect all visible icons with their grid positions
             var iconPositions = IconCanvas.Children.OfType<SeroIconView>()
@@ -1185,7 +1190,7 @@ namespace SeroDesk.Views
             }
             
             // Use shared grid dimensions calculation
-            var (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight) = GetGridDimensions();
+            var (canvasWidth, canvasHeight, columnsPerPage, rowsPerPage, horizontalSpacing, verticalSpacing, iconWidth, iconHeight, gridOriginX, gridOriginY) = GetGridDimensions();
             var iconsPerPage = columnsPerPage * rowsPerPage;
             
             System.Diagnostics.Debug.WriteLine($"Canvas: {canvasWidth}x{canvasHeight}, Grid: {columnsPerPage}x{rowsPerPage}, Spacing: {horizontalSpacing}x{verticalSpacing}");
@@ -1260,8 +1265,8 @@ namespace SeroDesk.Views
                         var row = displayIndex / columnsPerPage;
                         var col = displayIndex % columnsPerPage;
                         
-                        var x = col * horizontalSpacing + (horizontalSpacing - iconWidth) / 2;
-                        var y = row * verticalSpacing + (verticalSpacing - iconHeight) / 2;
+                        var x = gridOriginX + (col * horizontalSpacing);
+                        var y = gridOriginY + (row * verticalSpacing);
                         
                         Canvas.SetLeft(iconView, x);
                         Canvas.SetTop(iconView, y);

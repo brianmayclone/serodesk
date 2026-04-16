@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -22,6 +23,8 @@ namespace SeroDesk
     /// </remarks>
     public partial class App : Application
     {
+        private const string DebugCaptureSwitch = "--debug-capture";
+
         /// <summary>
         /// Mutex for ensuring only one instance of SeroDesk runs at a time.
         /// Critical for shell replacement scenarios where multiple instances
@@ -38,6 +41,8 @@ namespace SeroDesk
         /// Global keyboard hook for Windows key functionality
         /// </summary>
         private static GlobalKeyboardHook? _globalKeyboardHook;
+
+        internal static bool IsDebugCaptureMode { get; private set; }
         
         /// <summary>
         /// Overrides the application startup event to initialize SeroDesk as a shell replacement.
@@ -55,6 +60,9 @@ namespace SeroDesk
         /// </remarks>
         protected override void OnStartup(StartupEventArgs e)
         {
+            IsDebugCaptureMode = e.Args.Any(arg =>
+                string.Equals(arg, DebugCaptureSwitch, StringComparison.OrdinalIgnoreCase));
+
             // Ensure single instance - Critical for shell replacement stability
             // Using a GUID-based mutex name to avoid conflicts with other applications
             const string appName = "SeroDesk-{8F6F0AC4-B9A1-45fd-A8CF-72F04E6BDE8F}";
@@ -83,6 +91,30 @@ namespace SeroDesk
             CrashRecovery.SetRunning();
             
             base.OnStartup(e);
+
+            if (IsDebugCaptureMode)
+            {
+                Dispatcher.BeginInvoke(
+                    DispatcherPriority.ApplicationIdle,
+                    new Action(StartDebugCaptureAsync));
+            }
+        }
+
+        private async void StartDebugCaptureAsync()
+        {
+            try
+            {
+                var capturePath = await DebugCaptureService.RunAsync();
+                if (!string.IsNullOrWhiteSpace(capturePath))
+                {
+                    Logger.Info($"Debug capture completed: {capturePath}");
+                }
+            }
+            finally
+            {
+                Logger.Info("Shutting down after debug capture");
+                Shutdown();
+            }
         }
         
         /// <summary>

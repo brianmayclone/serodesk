@@ -110,10 +110,10 @@ namespace SeroDesk.Core
         {
             if (value is int batteryLevel)
             {
-                // Battery width is max 18px (20px - 2px for borders)
-                return Math.Max(1, (batteryLevel / 100.0) * 18);
+                // Battery fill width is max 16px inside a 20px outline.
+                return Math.Max(2, (batteryLevel / 100.0) * 16);
             }
-            return 18.0;
+            return 16.0;
         }
         
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
